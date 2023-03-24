@@ -106,7 +106,7 @@ void loop()
     delete buff;
   }
 
-  Serial.println("Getting Y Gyro");the A 
+  Serial.println("Getting Y Gyro");
   printToBTSerial("Y-Gyroscope: ");
   buff = floatToStr(gyro.gyro.y);
   if (buff){
