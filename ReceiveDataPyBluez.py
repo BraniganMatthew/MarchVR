@@ -1,5 +1,6 @@
 # Jibin Alex
 # Test program that is supposed to receive data through Bluetooth
+# Follow the steps to download the PyBluez library and all of its dependencies prior to running the program
 
 import bluetooth
 

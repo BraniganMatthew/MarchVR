@@ -1,5 +1,7 @@
 # Jibin Alex
 # Incomplete test program that is supposed to receive data through Bluetooth
+# This program does not work on Windows systems due to WSL not exposing Bluetooth hardware, thus preventing usage of the socket library
+# The PyBluez version of this program will work provided that the libraries are correctly installed.
 
 import socket
 
