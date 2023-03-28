@@ -12,7 +12,7 @@ s.connect((ESP32MACaddress, 1))
 
 try:
     while True:
-        data = s.recv(1024)
+        data = s.recv(32)
         if (data):
             print(data)
 
