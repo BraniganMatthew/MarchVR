@@ -2,9 +2,11 @@
 
 /* This program is a simple implementation of displaying IMU accelerometer and gyroscope to another device using Bluetooth Classic Serial*/
 /* Created by: Matthew Branigan */
+/* Modified on: 3/28/2023 */
 
 #include "BluetoothSerial.h"
 #include <Adafruit_LSM6DS3TRC.h>
+#include <bits/stdc++.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -21,18 +23,15 @@ BluetoothSerial SerialBT;
 String device_name = "MarchVR Best Team";
 Adafruit_LSM6DS3TRC lsm6ds3trc;
 
-//https://stackoverflow.com/questions/2988791/converting-float-to-char
-char* floatToStr(float num)
+void floatToStr(float num)
 {
-  char* buff = new char[64];
-  int ret = snprintf(buff, sizeof(buff), "%f", num);
-  if (ret == -1)
-    return nullptr;
-  else
-    return buff;
+  String s = String(num, 3);
+  char c[64];
+  s.toCharArray(c, sizeof(c));  
+  printToBTSerial(c);
 }
 
-void printToBTSerial(char* str)
+void printToBTSerial(const char* str)
 {
   size_t len = strlen(str);
   for (size_t i = 0; i < len; i++){
@@ -65,27 +64,27 @@ void setup()
 
 void loop() 
 {
+  if (!SerialBT.connected()){
+    Serial.println("Not Connected to Device!");
+    delay(1000);
+    return;
+  }
+    
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
-  Serial.println("Getting x accel");
-  printToBTSerial("X-Acceleration: ");
-  char* buff = floatToStr(accel.acceleration.x);
-  if (buff){
-    printToBTSerial(buff);
-    SerialBT.write('\n');
-    delete buff;    
-  }
+  
+  //Sends accel data x,y,z in that order via bluetooth serial
+  floatToStr(accel.acceleration.x);
+  floatToStr(accel.acceleration.y);
+  floatToStr(accel.acceleration.z);
 
-  Serial.println("Getting y accel");
-  printToBTSerial("Y-Acceleration: ");
-  buff = floatToStr(accel.acceleration.y);
-  if (buff){
-    printToBTSerial(buff);
-    SerialBT.write('\n');
-    delete buff;    
-  }
+  //Sends gyro data x,y,z in that order via bluetooth serial
+  floatToStr(gyro.gyro.x);
+  floatToStr(gyro.gyro.y);
+  floatToStr(gyro.gyro.z);
 
+<<<<<<< HEAD
   Serial.println("Getting z accel");
   printToBTSerial("Z-Acceleration: ");
   buff = floatToStr(accel.acceleration.z);
@@ -127,4 +126,6 @@ void loop()
   SerialBT.write('\n');
 
   delay(1000);
+=======
+>>>>>>> 65812e1c4c27670725b7446812937a509d70af27
 }
