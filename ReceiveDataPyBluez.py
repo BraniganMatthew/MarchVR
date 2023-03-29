@@ -1,15 +1,37 @@
 # Jibin Alex (Modified by Matthew Branigan)(Modified by Maria Carmona)
 # Test program that is supposed to receive data through Bluetooth
 # Follow the steps to download the PyBluez library and all of its dependencies prior to running the program
-
+# Program uses matplotlib python library to graph data points for accelerometer and gyroscope data received from the LSM6DSTR
 import bluetooth
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-
+# Creating connection with ESP32
 ESP32MACaddress = "E8:9F:6D:26:9F:1A"
 s = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 s.connect((ESP32MACaddress, 1))
+def conv(s):
+    try:
+        s=float(s)
+        #print('Correct'+str(s))
+        return True
+    except ValueError:
+        #print('Error'+str(s))
+        return False
+def recdata(dat, t): # function that calls recv() to obtain data from ESP32 and then performs filtering to make sure no incorrect data is used
+    start = time.time()
+    data = s.recv(64)
+    end = time.time()
+    if (data and len(data) >= 5 and len(data) < 8):
+        bl = conv(data)
+        if (bl == True):
+            if (float(data)>10):
+                dat = 10.0
+            else:
+                dat = float(data)
+            t = end - start
+    return dat, t
+
 accx = 0.0
 accy = 0.0
 accz = 0.0
@@ -22,121 +44,64 @@ taz = 0.0
 tgx = 0.0
 tgy = 0.0
 tgz = 0.0
-start = time.time()
-data = s.recv(64)
-data = float(data[1:-1])
-end = time.time()
-if (data and len(data) >= 5 and len(data) < 8):
-    accx = data
-    tax = end - start
-start = time.time()
-data = s.recv(64)
-data = float(data[2:-1])
-end = time.time()
-if (data and len(data) >= 5 and len(data) < 8):
-    accy = data
-    tay = end - start
-start = time.time()
-data = s.recv(64)
-data = float(data[2:-1])
-end = time.time()
-if (data and len(data) >= 5 and len(data) < 8):
-    accz = data
-    taz = end - start
-start = time.time()
-data = s.recv(64)
-data = float(data[2:-1])
-end = time.time()
-if (data and len(data) >= 5 and len(data) < 8):
-    gyrx = data
-    tgx = end - start
-start = time.time()
-data = s.recv(64)
-data = float(data[2:-1])
-end = time.time()
-if (data and len(data) >= 5 and len(data) < 8):
-    gyry = data
-    tgy = end - start
-start = time.time()
-data = s.recv(64)
-data = float(data[2:-1])
-end = time.time()
-if (data and len(data) >= 5 and len(data) < 8):
-    gyrz = data
-    tgz = end - start
-    
-plt.ion()
-fig = plt.figure()
-ax = fig.add_subplot(211)
-xa, = ax.plot(accx, tax, color='r', label='X')
-ya, = ax.plot(accy, tay, color='b', label='Y')
-za, = ax.plot(accz, taz, color='g', label='Z')
+bl = False
 
-ax1 = fig.add_subplot(212)
-xg, = ax1.plot(gyrx, tgx, color='r', label='X')
-yg, = ax1.plot(gyry, tgy, color='b', label='Y')
-zg, = ax1.plot(gyrz, tgz, color='g', label='Z')
+accxx = []
+taxx = []
+accyy = []
+tayy = []
+acczz = []
+tazz = []
+gyrxx = []
+tgxx = []
+gyryy = []
+tgyy = []
+gyrzz = []
+tgzz = []
 
 try:
-    while True:
-        start = time.time()
-        data = s.recv(64)
-        data = float(data[2:-1])
-        end = time.time()
-        if (data and len(data) >= 5 and len(data) < 8):
-            accx = data
-            tax = end - start
-        start = time.time()
-        data = s.recv(64)
-        data = float(data[2:-1])
-        end = time.time()
-        if (data and len(data) >= 5 and len(data) < 8):
-            accy = data
-            tay = end - start
-        start = time.time()
-        data = s.recv(64)
-        data = float(data[2:-1])
-        end = time.time()
-        if (data and len(data) >= 5 and len(data) < 8):
-            accz = data
-            taz = end - start
-        start = time.time()
-        data = s.recv(64)
-        data = float(data[2:-1])
-        end = time.time()
-        if (data and len(data) >= 5 and len(data) < 8):
-            gyrx = data
-            tgx = end - start
-        start = time.time()
-        data = s.recv(64)
-        data = float(data[2:-1])
-        end = time.time()
-        if (data and len(data) >= 5 and len(data) < 8):
-            gyry = data
-            tgy = end - start
-        start = time.time()
-        data = s.recv(64)
-        data = float(data[2:-1])
-        end = time.time()
-        if (data and len(data) >= 5 and len(data) < 8):
-            gyrz = data
-            tgz = end - start
-        xa.set_xdata(accx)
-        xa.set_ydata(tax)
-        ya.set_xdata(accy)
-        ya.set_ydata(tay)
-        za.set_xdata(accz)
-        za.set_ydata(taz)
-        xg.set_xdata(gyrx)
-        xg.set_ydata(tgx)
-        yg.set_xdata(gyry)
-        yg.set_ydata(tgy)      
-        zg.set_xdata(gyrz)
-        zg.set_ydata(tgz)
+    #collecting data points
+    for i in range(1000):
+        accx, tax = recdata(accx, tax)
+        accy, tay = recdata(accy, tay)
+        accz, taz = recdata(accz, taz)
+        gyrx, tgx = recdata(gyrx, tgx)
+        gyry, tgy = recdata(gyry, tgy)
+        gyrz, tgz = recdata(gyrz, tgz)
+        accxx.append(accx)
+        accyy.append(accy)
+        acczz.append(accz)
+        taxx.append(tax)
+        tayy.append(tay)
+        tazz.append(taz)
+        gyrxx.append(gyrx)
+        gyryy.append(gyry)
+        gyrzz.append(gyrz)
+        tgxx.append(tgx)
+        tgyy.append(tgy)
+        tgzz.append(tgz)
 
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-        time.sleep(0.1)
+    # Graphing scatter subplots
+    fig = plt.figure()
+    #Accelerometer plot
+    ax1 = fig.add_subplot(211)
+    ax1.scatter(taxx, accxx, c='b')
+    ax1.scatter(tayy, accyy, c='r')
+    ax1.scatter(tazz, acczz, c='g')
+    ax1.set_xlabel('Time (s)')
+    ax1.set_ylabel('m/s^2')
+    ax1.set_title('Accelerometer Data')
+    plt.legend(["x","y","z"])
+    #Gyroscope plot
+    ax2 = fig.add_subplot(212)
+    ax2.scatter(tgxx, gyrxx, c='b')
+    ax2.scatter(tgyy, gyryy, c='r')
+    ax2.scatter(tgzz, gyrzz, c='g')
+    ax2.set_xlabel('Time (s)')
+    ax2.set_ylabel('degrees/s')
+    ax2.set_title('Gyroscope Data')
+    plt.legend(["x","y","z"])
+    plt.show()
 except KeyboardInterrupt:
     print("Execution interrupted")
 
