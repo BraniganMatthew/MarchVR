@@ -4,7 +4,7 @@
 - Bluetooth Classic connection established between microcontroller and PC via a Python script
 - Data is transmitted through the aforementioned Bluetooth connection and filtered by the Python script
 - Accelerometer and gyroscope data is then received and plotted using Python and the Matplotlib library
-![Screenshot (15)](C:\Users\gaby\Downloads\MicrosoftTeams-image.png)
+![Screenshot (15)](https://drive.google.com/file/d/1lSedoWvXm5gDlqvUEgasip9owWV37ceZ/view?usp=sharing)
 ![Screenshot (16)](C:\Users\gaby\Pictures\Screenshots\Screenshot (959).png)
 ![Screenshot (17)](C:\Users\gaby\Pictures\Screenshots\Screenshot (968).png)
 ![Screenshot (18)](C:\Users\gaby\Pictures\Screenshots\Screenshot (966).png)
