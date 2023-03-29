@@ -7,3 +7,5 @@
 ## Project Architecture
 
 ## Known Bugs
+- Data recieved via python script in not logical, however data recieved through Arduino IDE is correct
+- OpenVR example "controller" works on select games
