@@ -84,48 +84,4 @@ void loop()
   floatToStr(gyro.gyro.y);
   floatToStr(gyro.gyro.z);
 
-<<<<<<< HEAD
-  Serial.println("Getting z accel");
-  printToBTSerial("Z-Acceleration: ");
-  buff = floatToStr(accel.acceleration.z);
-  if (buff){
-    printToBTSerial(buff);
-    SerialBT.write('\n');
-    delete buff;    
-  }
-
-  SerialBT.write('\n');
-
-  Serial.println("Getting X Gyro");
-  printToBTSerial("X-Gyroscope: ");
-  buff = floatToStr(gyro.gyro.x);
-  if (buff){
-    printToBTSerial(buff);
-    SerialBT.write('\n');
-    delete buff;
-  }
-
-  Serial.println("Getting Y Gyro");
-  printToBTSerial("Y-Gyroscope: ");
-  buff = floatToStr(gyro.gyro.y);
-  if (buff){
-    printToBTSerial(buff);
-    SerialBT.write('\n');
-    delete buff;
-  }
-
-  Serial.println("Getting Z Gyro");
-  printToBTSerial("Z-Gyroscope: ");
-  buff = floatToStr(gyro.gyro.z);
-  if (buff){
-    printToBTSerial(buff);
-    SerialBT.write('\n');
-    delete buff;
-  }
-
-  SerialBT.write('\n');
-
-  delay(1000);
-=======
->>>>>>> 65812e1c4c27670725b7446812937a509d70af27
 }
