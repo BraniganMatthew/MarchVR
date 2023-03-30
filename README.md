@@ -4,10 +4,10 @@
 - Bluetooth Classic connection established between microcontroller and PC via a Python script
 - Data is transmitted through the aforementioned Bluetooth connection and filtered by the Python script
 - Accelerometer and gyroscope data is then received and plotted using Python and the Matplotlib library
-![Screenshot (15)](https://drive.google.com/file/d/1lSedoWvXm5gDlqvUEgasip9owWV37ceZ/view?usp=sharing)
-![Screenshot (16)](C:\Users\gaby\Pictures\Screenshots\Screenshot (959).png)
-![Screenshot (17)](C:\Users\gaby\Pictures\Screenshots\Screenshot (968).png)
-![Screenshot (18)](C:\Users\gaby\Pictures\Screenshots\Screenshot (966).png)
+![Screenshot (15)](https://github.com/BraniganMatthew/MarchVR/blob/main/MicrosoftTeams-image.png)
+![Screenshot (16)](https://github.com/BraniganMatthew/MarchVR/blob/main/Screenshot%20(959).png)
+![Screenshot (17)](https://github.com/BraniganMatthew/MarchVR/blob/main/Screenshot%20(966).png)
+![Screenshot (18)](https://github.com/BraniganMatthew/MarchVR/blob/main/Screenshot%20(968).png)
 
 ## Project Architecture
 The LSM6DS3TR-C module sends the recorded XYZ accelerometer and gyrometer data to the ESP32 Feather V2 microcontroller using the I2C serial communication protocol and the LSM6DS3TR library provided by Adafruit. This connection is set up using the code found in the Examples folder. The microcontroller is then connected to through the Bluetooth Classic communication standard using an external Python script and the transmission of data is begun. This, as well as the functionality for the receiver was accomplished through the PyBluez library. 1000 points of this data is then plotted using the matplotlib Python library in order to verify the data being received.
