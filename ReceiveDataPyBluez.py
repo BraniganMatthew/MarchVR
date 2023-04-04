@@ -6,6 +6,7 @@ import bluetooth
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import dataConversions
 # Creating connection with ESP32
 ESP32MACaddress = "E8:9F:6D:26:9F:1A"
 s = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
@@ -20,16 +21,28 @@ def conv(s):
         return False
 def recdata(dat, t): # function that calls recv() to obtain data from ESP32 and then performs filtering to make sure no incorrect data is used
     start = time.time()
-    data = s.recv(64)
+    #data = s.recv(64)
+    data = s.recv(4)
+    arr = []
+    if (len(data) == 4):
+        for i in range(4):
+            #print(hex(data[i]), end=" ")
+            arr.append(hex(data[i])[2::])
+        #print(str(arr) + "-")
+        print(dataConversions.hexPairsToFloat(arr[3], arr[2], arr[1], arr[0]))
+    #print("")
+    #print(str(data))
+    #decode(data)
     end = time.time()
-    if (data and len(data) >= 5 and len(data) < 8):
-        bl = conv(data)
-        if (bl == True):
-            if (float(data)>10):
-                dat = 10.0
-            else:
-                dat = float(data)
-            t = end - start
+    dat = dataConversions.hexPairsToFloat(arr[3], arr[2], arr[1], arr[0])
+    # if (data and len(data) >= 5 and len(data) < 8):
+    #     bl = conv(data)
+    #     if (bl == True):
+    #         if (float(data)>10):
+    #             dat = 10.0
+    #         else:
+    #             dat = float(data)
+    t = end - start
     return dat, t
 
 accx = 0.0

@@ -4,6 +4,7 @@ import struct
 
 def hexPairsToFloat(a, b, c, d):
     binString = hexPairsToBinary(a, b, c, d)
+    #binString = a << 8*3 + b << 8*2 + c << 8*1 + d << 8*0
     f = int(binString, 2)
     #f = int('0100 0001 1010 1100 0111 1010 1110 0001', 2)
     #          4     1    a   c     7    a    e    1
@@ -15,8 +16,16 @@ def hexPairsToBinary(a, b, c, d):
     return hexPairToBinaryString(a) + hexPairToBinaryString(b) + hexPairToBinaryString(c) + hexPairToBinaryString(d)
 
 def hexPairToBinaryString(a):
-    #print(a[0])
-    return decimalToBinaryString(hexCharToDecimal(a[0])*16 + hexCharToDecimal(a[1]))
+    #print(len(a))
+    if(len(a)==2):
+        #print(decimalToBinaryString(hexCharToDecimal(a[0])*16 + hexCharToDecimal(a[1])))
+        return decimalToBinaryString(hexCharToDecimal(a[0])*16 + hexCharToDecimal(a[1]))
+    else:
+        #return decimalToBinaryString(hexCharToDecimal([a[0]])*16 + hexCharToDecimal('0'))
+        # print(a[0])
+        # print(hexCharToDecimal(a[0]))
+        # print(decimalToBinaryString(hexCharToDecimal(str(a[0]))))
+        return decimalToBinaryString(hexCharToDecimal(str(a[0])))
 
 def hexCharToDecimal(x):
     match x:
@@ -64,8 +73,20 @@ def decimalToBinaryString(x): # for 8 bits
             ans = "0" + ans
     return ans
 
+# def decode():
+#     for i in range(4):
+#         data += s.recv(1)
+
+# def decode(a):
+#     if (len(a)):
+#         //grab last 2 char and convert
+#     else:
+#         //
+
+
 # print(hexCharToDecimal("f"))
 # print(decimalToBinaryString(17))
 # print(hexPairToBinaryString("02"))
 # print(hexPairsToBinary("0f", "0f", "0f", "0f"))
-# print(hexPairsToFloat("c1", "ac", "7a", "e1")) # the actual function we need
+print(hexPairsToFloat("ce", "f", "ed", "40")) # the actual function we need
+#print(decimalToBinaryString(hexCharToDecimal('f')))
