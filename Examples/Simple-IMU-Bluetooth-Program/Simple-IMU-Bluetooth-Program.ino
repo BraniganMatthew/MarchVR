@@ -49,7 +49,7 @@ void setup()
 
   //Find IMU
   if (!lsm6ds3trc.begin_I2C()) {
-    Serial.println("Failed to find LSM6DS3TR-C chip");
+    Serial.println("Failed to find LSM6DS3TR-C chip. Please connect IMU to I2C connection.");
     while (1) {
       delay(10);
     }
@@ -66,22 +66,35 @@ void loop()
 {
   if (!SerialBT.connected()){
     Serial.println("Not Connected to Device!");
-    delay(1000);
+    delay(100);
     return;
   }
     
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
-  
+  Serial.println("Sending Accel Data!");
+
   //Sends accel data x,y,z in that order via bluetooth serial
-  floatToStr(accel.acceleration.x);
-  floatToStr(accel.acceleration.y);
-  floatToStr(accel.acceleration.z);
+
+  SerialBT.write((uint8_t*)(&accel.acceleration.x), sizeof(float));
+  SerialBT.write((uint8_t*)(&accel.acceleration.y), sizeof(float));
+  SerialBT.write((uint8_t*)(&accel.acceleration.z), sizeof(float));
+
+  // floatToStr(accel.acceleration.x);
+  // floatToStr(accel.acceleration.y);
+  // floatToStr(accel.acceleration.z);
+
+  Serial.println("Sending Gyro Data!");
 
   //Sends gyro data x,y,z in that order via bluetooth serial
-  floatToStr(gyro.gyro.x);
-  floatToStr(gyro.gyro.y);
-  floatToStr(gyro.gyro.z);
+
+  SerialBT.write((uint8_t*)(&gyro.gyro.x), sizeof(float));
+  SerialBT.write((uint8_t*)(&gyro.gyro.y), sizeof(float));
+  SerialBT.write((uint8_t*)(&gyro.gyro.z), sizeof(float));
+
+  // floatToStr(gyro.gyro.x);
+  // floatToStr(gyro.gyro.y);
+  // floatToStr(gyro.gyro.z);
 
 }
