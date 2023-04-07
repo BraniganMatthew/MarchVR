@@ -1,5 +1,4 @@
 // Jibin Alex
-// COP4600 Exercise 9
 // Client
 
 #include <stdio.h>
