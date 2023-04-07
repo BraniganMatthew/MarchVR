@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import dataConversions
+from collections import deque
 # Creating connection with ESP32
 ESP32MACaddress = "E8:9F:6D:26:9F:1A"
 DeviceName = "MarchVR Best Team"
@@ -40,8 +41,8 @@ def conv(s):
     except ValueError:
         #print('Error'+str(s))
         return False
-def recdata(dat, t): # function that calls recv() to obtain data from ESP32 and then performs filtering to make sure no incorrect data is used
-    start = time.time()
+def recdata(dat): # function that calls recv() to obtain data from ESP32 and then performs filtering to make sure no incorrect data is used
+    #start = time.time()
     #data = s.recv(64)
     data = s.recv(4)
     arr = []
@@ -55,7 +56,7 @@ def recdata(dat, t): # function that calls recv() to obtain data from ESP32 and 
     #print(str(data))
     #decode(data)
     dat = dataConversions.hexPairsToFloat(arr[3], arr[2], arr[1], arr[0])
-    end = time.time()
+    #end = time.time()
     # if (data and len(data) >= 5 and len(data) < 8):
     #     bl = conv(data)
     #     if (bl == True):
@@ -63,35 +64,24 @@ def recdata(dat, t): # function that calls recv() to obtain data from ESP32 and 
     #             dat = 10.0
     #         else:
     #             dat = float(data)
-    t = end - start
-    return dat, t
-
+    #t = end - start
+    return dat
 accx = 0.0
 accy = 0.0
 accz = 0.0
 gyrx = 0.0
 gyry = 0.0
 gyrz = 0.0
-tax = 0.0
-tay = 0.0
-taz = 0.0
-tgx = 0.0
-tgy = 0.0
-tgz = 0.0
+t = 0.0
 bl = False
 
 accxx = []
-taxx = []
 accyy = []
-tayy = []
 acczz = []
-tazz = []
 gyrxx = []
-tgxx = []
 gyryy = []
-tgyy = []
 gyrzz = []
-tgzz = []
+ta = []
 
 fig = plt.figure()
 ax1 = fig.add_subplot(211)
@@ -99,43 +89,43 @@ ax2 = fig.add_subplot(212)
 
 try:
     #collecting data points
+
     while True:
-        accx, tax = recdata(accx, tax)
-        accy, tay = recdata(accy, tay)
-        accz, taz = recdata(accz, taz)
-        gyrx, tgx = recdata(gyrx, tgx)
-        gyry, tgy = recdata(gyry, tgy)
-        gyrz, tgz = recdata(gyrz, tgz)
+        accx = recdata(accx)
+        accy = recdata(accy)
+        accz = recdata(accz)
+        gyrx = recdata(gyrx)
+        gyry = recdata(gyry)
+        gyrz = recdata(gyrz)
         accxx.append(accx)
         accyy.append(accy)
         acczz.append(accz)
-        taxx.append(tax)
-        tayy.append(tay)
-        tazz.append(taz)
+        ta.append(t)
         gyrxx.append(gyrx)
         gyryy.append(gyry)
         gyrzz.append(gyrz)
-        tgxx.append(tgx)
-        tgyy.append(tgy)
-        tgzz.append(tgz)
 
         #Accelerometer plot
-        ax1.scatter(taxx, accxx, c='b')
-        ax1.scatter(tayy, accyy, c='r')
-        ax1.scatter(tazz, acczz, c='g')
+        ax1.set_xlim(t-3, t, 100)
+        ax1.plot(ta, accxx, c='b')
+        ax1.plot(ta, accyy, c='r')
+        ax1.plot(ta, acczz, c='g')
         ax1.set_xlabel('Time (s)')
         ax1.set_ylabel('m/s^2')
         ax1.set_title('Accelerometer Data')
         plt.legend(["x","y","z"])
         #Gyroscope plot
-        ax2.scatter(tgxx, gyrxx, c='b')
-        ax2.scatter(tgyy, gyryy, c='r')
-        ax2.scatter(tgzz, gyrzz, c='g')
+        ax2.set_xlim(t-3, t, 100)
+        ax2.plot(ta, gyrxx, c='b')
+        ax2.plot(ta, gyryy, c='r')
+        ax2.plot(ta, gyrzz, c='g')
         ax2.set_xlabel('Time (s)')
         ax2.set_ylabel('degrees/s')
         ax2.set_title('Gyroscope Data')
         plt.legend(["x","y","z"])
         plt.pause(0.0001)
+        fig.canvas.draw()
+        t += 1.0
 except KeyboardInterrupt:
     print("Execution interrupted")
 
