@@ -22,6 +22,9 @@
 BluetoothSerial SerialBT;
 String device_name = "MarchVR Best Team";
 Adafruit_LSM6DS3TRC lsm6ds3trc;
+float lower = 8, upper = 15;
+  int stepCount = 0;
+  bool above = false, below = false;
 
 void floatToStr(float num)
 {
@@ -64,37 +67,119 @@ void setup()
 
 void loop() 
 {
-  if (!SerialBT.connected()){
-    Serial.println("Not Connected to Device!");
-    delay(100);
-    return;
-  }
+  // if (!SerialBT.connected()){
+  //   Serial.println("Not Connected to Device!");
+  //   delay(100);
+  //   return;
+  // }
     
+  // sensors_event_t accel, gyro, temp;
+  // lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+
+  // Serial.println("Sending Accel Data!");
+
+  // //Sends accel data x,y,z in that order via bluetooth serial
+
+  // SerialBT.write((uint8_t*)(&accel.acceleration.x), sizeof(float));
+  // SerialBT.write((uint8_t*)(&accel.acceleration.y), sizeof(float));
+  // SerialBT.write((uint8_t*)(&accel.acceleration.z), sizeof(float));
+  
+
+  // // floatToStr(accel.acceleration.x);
+  // // floatToStr(accel.acceleration.y);
+  // // floatToStr(accel.acceleration.z);
+
+  // Serial.println("Sending Gyro Data!");
+
+  // //Sends gyro data x,y,z in that order via bluetooth serial
+
+  // SerialBT.write((uint8_t*)(&gyro.gyro.x), sizeof(float));
+  // SerialBT.write((uint8_t*)(&gyro.gyro.y), sizeof(float));
+  // SerialBT.write((uint8_t*)(&gyro.gyro.z), sizeof(float));
+
+  // // floatToStr(gyro.gyro.x);
+  // // floatToStr(gyro.gyro.y);
+  // // floatToStr(gyro.gyro.z);
+
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
-  Serial.println("Sending Accel Data!");
+  
+  // if(above){
+  //   if (accel.acceleration.z < lower){
+  //     // # send step
+  //     // #stepCount+=1
+  //     above = false;
+  //     Serial.print("Up");
+  //   }
+  // }else{
+  //   if (accel.acceleration.z > upper){
+  //     //# send step
+  //     stepCount++;
+  //     above = true;
+  //     Serial.print("STEP COUNT: ");
+  //     Serial.println(stepCount);
+  //   }
+  // }
 
-  //Sends accel data x,y,z in that order via bluetooth serial
+  // delay(500);
 
-  SerialBT.write((uint8_t*)(&accel.acceleration.x), sizeof(float));
-  SerialBT.write((uint8_t*)(&accel.acceleration.y), sizeof(float));
-  SerialBT.write((uint8_t*)(&accel.acceleration.z), sizeof(float));
+  float speed = 0.0f;
 
-  // floatToStr(accel.acceleration.x);
-  // floatToStr(accel.acceleration.y);
-  // floatToStr(accel.acceleration.z);
+  // if (accel.acceleration.z < lower){
+  //     // # send step
+  //     // #stepCount+=1
+  //     above = false;
+  //     Serial.print("Up");
+  //   }
+  // }else{
+  //   if (accel.acceleration.z > upper){
+  //     //# send step
+  //     stepCount++;
+  //     above = true;
+  // }
 
-  Serial.println("Sending Gyro Data!");
+  if (accel.acceleration.z < 8.0f){
+    below = true;
+  } else if (accel.acceleration.z > 15.0f){
+    above = true;
+  } else {
+    below = false;
+    above = false;
+  }
+  if (above && below){
+    below = false;
+    above = false;
+    stepCount++;
+    Serial.print("STEP COUNT: ");
+    Serial.println(stepCount);
+  }
 
-  //Sends gyro data x,y,z in that order via bluetooth serial
+  
+  
+  // Serial.print("Accel_X:");
+  // Serial.print(accel.acceleration.x);
+  // Serial.print(",");
+  // Serial.print("Accel_Y:");
+  // Serial.print(accel.acceleration.y);
+  // Serial.print(",");
+  // Serial.print("Accel_Z:");
+  // Serial.print(accel.acceleration.z);
+  // Serial.print(",");
 
-  SerialBT.write((uint8_t*)(&gyro.gyro.x), sizeof(float));
-  SerialBT.write((uint8_t*)(&gyro.gyro.y), sizeof(float));
-  SerialBT.write((uint8_t*)(&gyro.gyro.z), sizeof(float));
+  // Serial.print("Gyro_X:");
+  // Serial.print(gyro.gyro.x);
+  // Serial.print(",");
+  // Serial.print("Gyro_Y:");
+  // Serial.print(gyro.gyro.y);
+  // Serial.print(",");
+  // Serial.print("Gyro_Z:");
+  // Serial.print(gyro.gyro.z);
+  // Serial.print(",");
 
-  // floatToStr(gyro.gyro.x);
-  // floatToStr(gyro.gyro.y);
-  // floatToStr(gyro.gyro.z);
+  // Serial.print("Speed:");
+  // Serial.print(accel.acceleration.z*0.01);
+  // Serial.print("\n");
+  
 
 }
