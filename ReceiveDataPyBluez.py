@@ -7,10 +7,36 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import dataConversions
+from collections import deque
+from itertools import count
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 # Creating connection with ESP32
 ESP32MACaddress = "E8:9F:6D:26:9F:1A"
+DeviceName = "MarchVR Best Team"
+print("Looking for device...")
+DeviceFound = False
+DeviceAddr = ""
+
+while True:
+    res = bluetooth.discover_devices(3, False, True, False)
+    for s in res:
+        if s[1] == DeviceName:
+            DeviceFound = True
+            DeviceAddr = s[0]
+            break
+    if DeviceFound:
+        print("Device Found.")
+        break
+    else:
+        print("Device Missing...Retrying in 2 seconds")
+        time.sleep(2)
+        print("Retrying now...")
+
+
 s = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-s.connect((ESP32MACaddress, 1))
+s.connect((DeviceAddr, 1))
 def conv(s):
     try:
         s=float(s)
@@ -19,8 +45,8 @@ def conv(s):
     except ValueError:
         #print('Error'+str(s))
         return False
-def recdata(dat, t): # function that calls recv() to obtain data from ESP32 and then performs filtering to make sure no incorrect data is used
-    start = time.time()
+def recdata(dat): # function that calls recv() to obtain data from ESP32 and then performs filtering to make sure no incorrect data is used
+    #start = time.time()
     #data = s.recv(64)
     data = s.recv(4)
     arr = []
@@ -29,21 +55,12 @@ def recdata(dat, t): # function that calls recv() to obtain data from ESP32 and 
             #print(hex(data[i]), end=" ")
             arr.append(hex(data[i])[2::])
         #print(str(arr) + "-")
-        print(dataConversions.hexPairsToFloat(arr[3], arr[2], arr[1], arr[0]))
+        #print(dataConversions.hexPairsToFloat(arr[3], arr[2], arr[1], arr[0]))
     #print("")
     #print(str(data))
     #decode(data)
-    end = time.time()
     dat = dataConversions.hexPairsToFloat(arr[3], arr[2], arr[1], arr[0])
-    # if (data and len(data) >= 5 and len(data) < 8):
-    #     bl = conv(data)
-    #     if (bl == True):
-    #         if (float(data)>10):
-    #             dat = 10.0
-    #         else:
-    #             dat = float(data)
-    t = end - start
-    return dat, t
+    return dat
 
 accx = 0.0
 accy = 0.0
@@ -51,70 +68,75 @@ accz = 0.0
 gyrx = 0.0
 gyry = 0.0
 gyrz = 0.0
-tax = 0.0
-tay = 0.0
-taz = 0.0
-tgx = 0.0
-tgy = 0.0
-tgz = 0.0
+t = 0.0
 bl = False
 
 accxx = []
-taxx = []
 accyy = []
-tayy = []
 acczz = []
-tazz = []
 gyrxx = []
-tgxx = []
 gyryy = []
-tgyy = []
 gyrzz = []
-tgzz = []
+ta = []
+
+fig = plt.figure()
+ax1 = fig.add_subplot(211)
+ax2 = fig.add_subplot(212)
+upper = 10.5
+lower = 9.5
+above = True
+stepCount = 0
 
 try:
     #collecting data points
-    for i in range(1000):
-        accx, tax = recdata(accx, tax)
-        accy, tay = recdata(accy, tay)
-        accz, taz = recdata(accz, taz)
-        gyrx, tgx = recdata(gyrx, tgx)
-        gyry, tgy = recdata(gyry, tgy)
-        gyrz, tgz = recdata(gyrz, tgz)
-        accxx.append(accx)
-        accyy.append(accy)
-        acczz.append(accz)
-        taxx.append(tax)
-        tayy.append(tay)
-        tazz.append(taz)
-        gyrxx.append(gyrx)
-        gyryy.append(gyry)
-        gyrzz.append(gyrz)
-        tgxx.append(tgx)
-        tgyy.append(tgy)
-        tgzz.append(tgz)
 
-    # Graphing scatter subplots
-    fig = plt.figure()
-    #Accelerometer plot
-    ax1 = fig.add_subplot(211)
-    ax1.scatter(taxx, accxx, c='b')
-    ax1.scatter(tayy, accyy, c='r')
-    ax1.scatter(tazz, acczz, c='g')
-    ax1.set_xlabel('Time (s)')
-    ax1.set_ylabel('m/s^2')
-    ax1.set_title('Accelerometer Data')
-    plt.legend(["x","y","z"])
-    #Gyroscope plot
-    ax2 = fig.add_subplot(212)
-    ax2.scatter(tgxx, gyrxx, c='b')
-    ax2.scatter(tgyy, gyryy, c='r')
-    ax2.scatter(tgzz, gyrzz, c='g')
-    ax2.set_xlabel('Time (s)')
-    ax2.set_ylabel('degrees/s')
-    ax2.set_title('Gyroscope Data')
-    plt.legend(["x","y","z"])
-    plt.show()
+    while True:
+        accx = recdata(accx)
+        accy = recdata(accy)
+        accz = recdata(accz)
+        gyrx = recdata(gyrx)
+        gyry = recdata(gyry)
+        gyrz = recdata(gyrz)
+        if(above):
+            if accz < lower:
+                    # send step
+                    stepCount+=1
+                    above = False
+        else:
+            if accy > upper:
+                # send step
+                stepCount+=1
+                above = True
+        print("STEP COUNT: " + str(stepCount))
+        # accxx.append(accx)
+        # accyy.append(accy)
+        # acczz.append(accz)
+        ta.append(t)
+        # gyrxx.append(gyrx)
+        # gyryy.append(gyry)
+        # gyrzz.append(gyrz)
+
+        #Accelerometer plot
+        # ax1.set_xlim(t-3, t, 100)
+        # ax1.plot(ta, accxx, c='b')
+        # ax1.plot(ta, accyy, c='r')
+        # ax1.plot(ta, acczz, c='g')
+        # ax1.set_xlabel('Time (s)')
+        # ax1.set_ylabel('m/s^2')
+        # ax1.set_title('Accelerometer Data')
+        # plt.legend(["x","y","z"])
+        #Gyroscope plot
+        # ax2.set_xlim(t-3, t, 100)
+        # ax2.plot(ta, gyrxx, c='b')
+        # ax2.plot(ta, gyryy, c='r')
+        # ax2.plot(ta, gyrzz, c='g')
+        # ax2.set_xlabel('Time (s)')
+        # ax2.set_ylabel('degrees/s')
+        # ax2.set_title('Gyroscope Data')
+        #plt.legend(["x","y","z"])
+        # plt.pause(0.0001)
+        # fig.canvas.draw()
+        #t += 1.0
 except KeyboardInterrupt:
     print("Execution interrupted")
 

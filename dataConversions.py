@@ -73,20 +73,7 @@ def decimalToBinaryString(x): # for 8 bits
             ans = "0" + ans
     return ans
 
-# def decode():
-#     for i in range(4):
-#         data += s.recv(1)
-
-# def decode(a):
-#     if (len(a)):
-#         //grab last 2 char and convert
-#     else:
-#         //
-
-
-# print(hexCharToDecimal("f"))
-# print(decimalToBinaryString(17))
-# print(hexPairToBinaryString("02"))
 # print(hexPairsToBinary("0f", "0f", "0f", "0f"))
-print(hexPairsToFloat("ce", "f", "ed", "40")) # the actual function we need
+#print(hexPairsToFloat("ce", "f", "ed", "40")) # the actual function we need
 #print(decimalToBinaryString(hexCharToDecimal('f')))
+
