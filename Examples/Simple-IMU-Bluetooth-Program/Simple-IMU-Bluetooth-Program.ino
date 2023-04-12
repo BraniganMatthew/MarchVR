@@ -7,6 +7,7 @@
 #include "BluetoothSerial.h"
 #include <Adafruit_LSM6DS3TRC.h>
 #include <bits/stdc++.h>
+#include <algorithm>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -20,8 +21,16 @@
 
 // Global Variables
 BluetoothSerial SerialBT;
-String device_name = "MarchVR Best Team";
+String device_name = "MarchVR Best Team 2";
 Adafruit_LSM6DS3TRC lsm6ds3trc;
+float lower = 8, upper = 15;
+int stepCount = 0;
+bool above = false, below = false;
+float xacc[1000] = {0};
+float yacc[1000] = {0};
+float zacc[1000] = {0};
+float mag[1000] = {0};
+float threshold = 0.0;
 
 void floatToStr(float num)
 {
@@ -59,42 +68,141 @@ void setup()
 
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
+  //Serial.println(calibrate(xacc,yacc,zacc));
 
 }
 
 void loop() 
 {
-  if (!SerialBT.connected()){
-    Serial.println("Not Connected to Device!");
-    delay(100);
-    return;
-  }
+  // if (!SerialBT.connected()){
+  //   Serial.println("Not Connected to Device!");
+  //   delay(100);
+  //   return;
+  // }
     
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
-  Serial.println("Sending Accel Data!");
+  // Serial.println("Sending Accel Data!");
 
-  //Sends accel data x,y,z in that order via bluetooth serial
+  // //Sends accel data x,y,z in that order via bluetooth serial
 
-  SerialBT.write((uint8_t*)(&accel.acceleration.x), sizeof(float));
-  SerialBT.write((uint8_t*)(&accel.acceleration.y), sizeof(float));
-  SerialBT.write((uint8_t*)(&accel.acceleration.z), sizeof(float));
+  // SerialBT.write((uint8_t*)(&accel.acceleration.x), sizeof(float));
+  // SerialBT.write((uint8_t*)(&accel.acceleration.y), sizeof(float));
+  // SerialBT.write((uint8_t*)(&accel.acceleration.z), sizeof(float));
+  
 
-  // floatToStr(accel.acceleration.x);
-  // floatToStr(accel.acceleration.y);
-  // floatToStr(accel.acceleration.z);
+  // // floatToStr(accel.acceleration.x);
+  // // floatToStr(accel.acceleration.y);
+  // // floatToStr(accel.acceleration.z);
 
-  Serial.println("Sending Gyro Data!");
+  // Serial.println("Sending Gyro Data!");
 
-  //Sends gyro data x,y,z in that order via bluetooth serial
+  // //Sends gyro data x,y,z in that order via bluetooth serial
 
-  SerialBT.write((uint8_t*)(&gyro.gyro.x), sizeof(float));
-  SerialBT.write((uint8_t*)(&gyro.gyro.y), sizeof(float));
-  SerialBT.write((uint8_t*)(&gyro.gyro.z), sizeof(float));
+  // SerialBT.write((uint8_t*)(&gyro.gyro.x), sizeof(float));
+  // SerialBT.write((uint8_t*)(&gyro.gyro.y), sizeof(float));
+  // SerialBT.write((uint8_t*)(&gyro.gyro.z), sizeof(float));
 
-  // floatToStr(gyro.gyro.x);
-  // floatToStr(gyro.gyro.y);
-  // floatToStr(gyro.gyro.z);
+  // // floatToStr(gyro.gyro.x);
+  // // floatToStr(gyro.gyro.y);
+  // // floatToStr(gyro.gyro.z);
 
+  //sensors_event_t accel, gyro, temp;
+  //lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+
+  
+  // if(above){
+  //   if (accel.acceleration.z < lower){
+  //     // # send step
+  //     // #stepCount+=1
+  //     above = false;
+  //     Serial.print("Up");
+  //   }
+  // }else{
+  //   if (accel.acceleration.z > upper){
+  //     //# send step
+  //     stepCount++;
+  //     above = true;
+  //     Serial.print("STEP COUNT: ");
+  //     Serial.println(stepCount);
+  //   }
+  // }
+
+  // delay(500);
+
+  float speed = 0.0f;
+
+  // if (accel.acceleration.z < lower){
+  //     // # send step
+  //     // #stepCount+=1
+  //     above = false;
+  //     Serial.print("Up");
+  //   }
+  // }else{
+  //   if (accel.acceleration.z > upper){
+  //     //# send step
+  //     stepCount++;
+  //     above = true;
+  // }
+
+  // if (accel.acceleration.z < 8.0f){
+  //   below = true;
+  // } else if (accel.acceleration.z > 15.0f){
+  //   above = true;
+  // } else {
+  //   below = false;
+  //   above = false;
+  // }
+  // if (above && below){
+  //   below = false;
+  //   above = false;
+  //   stepCount++;
+  //   Serial.print("STEP COUNT: ");
+  //   Serial.println(stepCount);
+  // }
+  //Serial.println(calibrate(xacc,yacc,zacc));
+  // for (int k = 0; k < 100; k++){
+  //   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+  //   Serial.print("Accel_X:");
+  //   Serial.print(accel.acceleration.x);
+  //   Serial.print(",");
+  //   Serial.print("Accel_Y:");
+  //   Serial.print(accel.acceleration.y);
+  //   Serial.print(",");
+  //   Serial.print("Accel_Z:");
+  //   Serial.print(accel.acceleration.z);
+  //   Serial.print(",");
+
+  //   Serial.print("Gyro_X:");
+  //   Serial.print(gyro.gyro.x);
+  //   Serial.print(",");
+  //   Serial.print("Gyro_Y:");
+  //   Serial.print(gyro.gyro.y);
+  //   Serial.print(",");
+  //   Serial.print("Gyro_Z:");
+  //   Serial.println(gyro.gyro.z);
+
+  // }
+  
+
+}
+float calibrate(float xacc[1000],float yacc[1000],float zacc[1000])
+{
+  sensors_event_t accel, gyro, temp;
+  lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+  float maxVal = 0.0f, minVal = 100.0f;
+  for (int i = 0; i < 1000; i++){
+    xacc[i] = accel.acceleration.x;
+    delay(5);
+    yacc[i] = accel.acceleration.y;
+    delay(5);
+    zacc[i] = accel.acceleration.z;
+    delay(5);
+    mag[i] = sqrt(pow(xacc[i],2) + pow(yacc[i],2) + pow(zacc[i],2));
+    maxVal = max(maxVal, mag[i]);
+    minVal = min(minVal, mag[i]);
+  }
+  float threshold = (maxVal - minVal)/2.0;
+  return threshold;
 }
