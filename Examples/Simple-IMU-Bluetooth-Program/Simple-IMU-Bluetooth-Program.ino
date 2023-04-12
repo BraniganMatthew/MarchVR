@@ -23,8 +23,15 @@ BluetoothSerial SerialBT;
 String device_name = "MarchVR Best Team";
 Adafruit_LSM6DS3TRC lsm6ds3trc;
 float lower = 8, upper = 15;
-  int stepCount = 0;
-  bool above = false, below = false;
+int stepCount = 0;
+bool above = false, below = false;
+float accelAvg[3];
+float accelMagAvg;
+float variance = 0.1f;
+float recentMags[50];
+float recentMagAvg = 0.0f;
+unsigned int nextElement = 0, up = 0;
+bool haveStepped = false, nextStep = false;
 
 void floatToStr(float num)
 {
@@ -62,6 +69,28 @@ void setup()
 
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
+
+  sensors_event_t accel, gyro, temp;
+  //Testing average calibration
+  Serial.println("Calibrating please wait...");
+  for (unsigned int i = 0; i < 100; i++){
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+    accelAvg[0] += accel.acceleration.x;
+    accelAvg[1] += accel.acceleration.y;
+    accelAvg[2] += accel.acceleration.z;
+  }
+  unsigned int maxVal = 0;
+  for (unsigned int i = 0; i < 3; i++){
+    accelAvg[i] /= 100.0f;
+    if (maxVal < accelAvg[i]){
+      up = i;
+      maxVal = accelAvg[i];
+    }
+  }
+  accelMagAvg = sqrt(pow(accelAvg[0],2) + pow(accelAvg[1],2) + pow(accelAvg[2],2));
+  
+  Serial.println("Calibration done!");
+  
 
 }
 
@@ -139,43 +168,81 @@ void loop()
   //     above = true;
   // }
 
-  if (accel.acceleration.z < 8.0f){
+  
+
+  lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+
+  if (nextElement >= 50) {nextElement = 0;}
+
+  // recentMags[nextElement] = sqrt(pow(accel.acceleration.x,2) + pow(accel.acceleration.y,2) + pow(accel.acceleration.z,2));
+  // nextElement++;
+  // unsigned int usedElements = 0;
+  // for (unsigned int i = 0; i < 100; i++){  
+  //   if (recentMags[i] == 0)
+  //     continue;
+  //   recentMagAvg += recentMags[i];
+  //   usedElements++;
+  // }  
+
+  // recentMagAvg /= usedElements;
+
+  // if (recentMagAvg > accelMagAvg && !haveStepped) {
+  //   haveStepped = true;
+  //   stepCount++;    
+  //   Serial.print("STEP COUNT: ");
+  //   Serial.println(stepCount);
+  // }
+
+  // if (recentMagAvg < accelMagAvg && haveStepped){
+  //   haveStepped = false;
+  // }
+
+  float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
+
+  if (currAccel[up] < accelAvg[up]*(1-variance)){
     below = true;
-  } else if (accel.acceleration.z > 15.0f){
+  } else if (currAccel[up] > accelAvg[up]*(1+variance)){
     above = true;
   } else {
     below = false;
     above = false;
   }
+
   if (above && below){
     below = false;
     above = false;
-    stepCount++;
-    Serial.print("STEP COUNT: ");
-    Serial.println(stepCount);
+    if (nextStep){
+      stepCount++;
+      nextStep = false;
+      Serial.print("STEP COUNT: ");
+      Serial.println(stepCount);
+    } else {
+      nextStep = true;
+    }
+    
   }
 
   
   
-  // Serial.print("Accel_X:");
-  // Serial.print(accel.acceleration.x);
-  // Serial.print(",");
-  // Serial.print("Accel_Y:");
-  // Serial.print(accel.acceleration.y);
-  // Serial.print(",");
-  // Serial.print("Accel_Z:");
-  // Serial.print(accel.acceleration.z);
-  // Serial.print(",");
+  //Serial.print("Accel_X:");
+  //Serial.print(accel.acceleration.x);
+  //Serial.print(",");
+  //Serial.print("Accel_Y:");
+  //Serial.print(accel.acceleration.y);
+  //Serial.print(",");
+  //Serial.print("Accel_Z:");
+  //Serial.print(accel.acceleration.z);
+  //Serial.print(",");
 
-  // Serial.print("Gyro_X:");
-  // Serial.print(gyro.gyro.x);
-  // Serial.print(",");
-  // Serial.print("Gyro_Y:");
-  // Serial.print(gyro.gyro.y);
-  // Serial.print(",");
-  // Serial.print("Gyro_Z:");
-  // Serial.print(gyro.gyro.z);
-  // Serial.print(",");
+  //Serial.print("Gyro_X:");
+  //Serial.print(gyro.gyro.x);
+  //Serial.print(",");
+  //Serial.print("Gyro_Y:");
+  //Serial.print(gyro.gyro.y);
+  //Serial.print(",");
+  //Serial.print("Gyro_Z:");
+  //Serial.print(gyro.gyro.z);
+  //Serial.print("\n");
 
   // Serial.print("Speed:");
   // Serial.print(accel.acceleration.z*0.01);
