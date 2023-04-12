@@ -27,8 +27,9 @@ int stepCount = 0;
 bool above = false, below = false;
 float accelAvg[3];
 float accelMagAvg;
-float variance = 0.1f;
+float variance = 0.05f;
 float recentMags[50];
+short accelPos[3];
 float recentMagAvg = 0.0f;
 unsigned int nextElement = 0, up = 0;
 bool haveStepped = false, nextStep = false;
@@ -82,10 +83,14 @@ void setup()
   unsigned int maxVal = 0;
   for (unsigned int i = 0; i < 3; i++){
     accelAvg[i] /= 100.0f;
-    if (maxVal < accelAvg[i]){
+    if (maxVal < abs(accelAvg[i])){
       up = i;
-      maxVal = accelAvg[i];
+      maxVal = abs(accelAvg[i]);
     }
+    if (accelAvg[i] < 0)
+      accelPos[i] = -1;
+    else
+      accelPos[i] = 1;
   }
   accelMagAvg = sqrt(pow(accelAvg[0],2) + pow(accelAvg[1],2) + pow(accelAvg[2],2));
   
@@ -199,9 +204,9 @@ void loop()
 
   float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
 
-  if (currAccel[up] < accelAvg[up]*(1-variance)){
+  if (currAccel[up]*accelPos[up] < accelPos[up]*accelAvg[up]*(1-variance)){
     below = true;
-  } else if (currAccel[up] > accelAvg[up]*(1+variance)){
+  } else if (currAccel[up]*accelPos[up] > accelPos[up]*accelAvg[up]*(1+variance)){
     above = true;
   } else {
     below = false;
