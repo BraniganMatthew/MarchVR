@@ -1,4 +1,8 @@
 ﻿  ControllerDriver.cpp
-     Creating library C:\Users\richa\MarchVR_Example\openvr-driver-example\OpenVrDriverExample\x64\Release\OpenVrDriverExample.lib and object C:\Users\richa\MarchVR_Example\openvr-driver-example\OpenVrDriverExample\x64\Release\OpenVrDriverExample.exp
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(158,14): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+  DeviceFactory.cpp
+  DeviceProvider.cpp
+  Generating Code...
+     Creating library C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\OpenVrDriverExample\x64\Release\OpenVrDriverExample.lib and object C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\OpenVrDriverExample\x64\Release\OpenVrDriverExample.exp
   LINK : /LTCG specified but no code generation required; remove /LTCG from the link command line to improve linker performance
-  OpenVrDriverExample.vcxproj -> C:\Users\richa\MarchVR_Example\openvr-driver-example\OpenVrDriverExample\x64\Release\OpenVrDriverExample.dll
+  OpenVrDriverExample.vcxproj -> C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\OpenVrDriverExample\x64\Release\OpenVrDriverExample.dll

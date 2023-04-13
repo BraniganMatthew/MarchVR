@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\richa\MarchVR_Example\openvr-driver-example\OpenVrDriverExample\x64\Release\OpenVrDriverExample.dll</FullPath>
+      <FullPath>C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\OpenVrDriverExample\x64\Release\OpenVrDriverExample.dll</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />
