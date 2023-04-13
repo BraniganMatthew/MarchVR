@@ -11,7 +11,8 @@
 #include <Ewma.h>
 #include <movingAvg.h>
 #define WINDOW_SIZE 2.0
-int ind = 0;
+int flag = 0;
+int step = 0;
 // float valx = 0.0;
 // float valy = 0.0;
 // float valz = 0.0;
@@ -43,6 +44,11 @@ Adafruit_LSM6DS3TRC lsm6ds3trc;
 float lower = 8, upper = 15;
 int stepCount = 0;
 bool above = false, below = false;
+float fx = 0.0f;
+float fy = 0.0f;
+float fz = 0.0f;
+float mag = 0.0f;
+float threshold = 11.0f;
 // float xacc[1000] = {0};
 // float yacc[1000] = {0};
 // float zacc[1000] = {0};
@@ -99,29 +105,50 @@ void loop()
     
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-  float accx = accel.acceleration.x;
-  float fx = Filter1.filter(accx);
-  float accy = accel.acceleration.y;
-  float fy = Filter1.filter(accy);
-  float accz = accel.acceleration.z;
-  float fz = Filter1.filter(accz);
-  Serial.print("Accel_X:");
-  Serial.print(accx);
-  Serial.print(",");
-  Serial.print("Accel_Y:");
-  Serial.print(accy);
-  Serial.print(",");
-  Serial.print("Accel_Z:");
-  Serial.print(accz);
-  Serial.print(",");
-  Serial.print("filterx:");
-  Serial.print(fx);
-  Serial.print(",");
-  Serial.print("filtery:");
-  Serial.print(fy);
-  Serial.print(",");
-  Serial.print("filterz:");
-  Serial.println(fz);
+  // float accx = accel.acceleration.x;
+  // float fx = Filter1.filter(accx);
+  // float accy = accel.acceleration.y;
+  // float fy = Filter1.filter(accy);
+  // float accz = accel.acceleration.z;
+  // float fz = Filter1.filter(accz);
+  //float currace[3] = (accel.acceleration.x,accel.acceleration.y,accel.acceleration.z)
+
+  fx = 0.7*fx + (1-0.7)*accel.acceleration.x;
+  fy = 0.7*fy + (1-0.7)*accel.acceleration.y;
+  fz = 0.7*fz + (1-0.7)*accel.acceleration.z;
+  mag = sqrt(pow(fx,2)+pow(fy,2)+pow(fz,2));
+  if (mag>threshold && flag == 0){
+    step++;
+    flag = 1;
+    Serial.print("Steps: ");
+    Serial.println(step);
+  }
+  else if (mag > threshold && flag == 1){
+
+  }
+  if (mag < threshold && flag == 1){
+    flag = 0;
+  }
+  // Serial.print("Accel_X:");
+  // Serial.print(accel.acceleration.x);
+  // Serial.print(",");
+  // Serial.print("Accel_Y:");
+  // Serial.print(accel.acceleration.y);
+  // Serial.print(",");
+  // Serial.print("Accel_Z:");
+  // Serial.print(accel.acceleration.z);
+  // Serial.print(",");
+  // Serial.print("filterx:");
+  // Serial.print(fx);
+  // Serial.print(",");
+  // Serial.print("filtery:");
+  // Serial.print(fy);
+  // Serial.print(",");
+  // Serial.print("filterz:");
+  // Serial.print(fz);
+  // Serial.print(",");
+  // Serial.print("filtermag:");
+  // Serial.println(mag);
 
   delay(100);
 
