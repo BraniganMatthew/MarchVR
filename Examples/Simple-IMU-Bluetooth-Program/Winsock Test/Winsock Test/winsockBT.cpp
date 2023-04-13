@@ -8,6 +8,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #pragma comment(lib, "ws2_32.lib")
+#pragma execution_character_set("utf-8")
 #include <WinSock2.h>
 #include <ws2bth.h>
 #include <ws2tcpip.h>
@@ -15,9 +16,12 @@
 #include <stdlib.h>
 #include <Windows.h>
 #include <bluetoothapis.h>
+#include <string>
 
+#define DEFAULT_BUFF_LEN 1024
 // ESP32 Address
-const char* ESP32MACaddress = "E8:9F:6D:26:9F:1A";
+const char* ESP32MACaddress1 = "E8:9F:6D:26:9F:1A";
+const char* ESP32MACaddress2 = "E8:9F:6D:2F:27:D6";
 
 // Function to change ESP32 Address into proper form
 int str2ba(const char* straddr, BTH_ADDR* btaddr) {
@@ -83,7 +87,7 @@ int main() {
     service.addressFamily = AF_BTH; 
     service.serviceClassId = RFCOMM_PROTOCOL_UUID; 
     service.port = BT_PORT_ANY;
-    str2ba(ESP32MACaddress, &service.btAddr);
+    str2ba(ESP32MACaddress2, &service.btAddr);
     // Connects and checks for errors
     if (connect(pc_socket, (SOCKADDR*)&service, sizeof(service)) == SOCKET_ERROR) { 
         printf("connect() failed: %ld.\n", WSAGetLastError());
@@ -97,8 +101,95 @@ int main() {
         printf("connect() is OK!\n");
     }
 
-    while (1) {}
 
+
+    // Receive data from the ESP32
+    /*
+    char recvBuffer[DEFAULT_BUFF_LEN];
+    float temp;
+    std::string strTemp;
+
+    while (1) {
+        memset(recvBuffer, '\0', sizeof(recvBuffer));
+        int recv_result = recv(pc_socket, recvBuffer, sizeof(char), 0);
+        // Error checking
+        if (recv_result == SOCKET_ERROR) {
+            printf("Failed to receive data: %d\n", WSAGetLastError());
+            closesocket(pc_socket);
+            WSACleanup();
+            return 0;
+        }
+        strTemp = recvBuffer;
+        if (strTemp == "x"){
+            memset(recvBuffer, '\0', sizeof(recvBuffer));
+            recv(pc_socket, recvBuffer, sizeof(float), 0);
+            temp = std::stof(recvBuffer);
+            printf("X: %f\n", temp);
+        }
+        else if (strTemp == "y") {
+            memset(recvBuffer, '\0', sizeof(recvBuffer));
+            recv(pc_socket, recvBuffer, sizeof(float), 0);
+            temp = std::stof(recvBuffer);
+            printf("Y: %f\n", temp);
+        }
+        else if (strTemp == "z") {
+            memset(recvBuffer, '\0', sizeof(recvBuffer));
+            recv(pc_socket, recvBuffer, sizeof(float), 0);
+            temp = std::stof(recvBuffer);
+            printf("Z: %f\n", temp);
+        }
+
+        //recvBuffer[recv_result] = '\0'; // Null-terminate the received data
+
+        //printf("Received data: %s\n", recvBuffer);
+
+    }
+    */
+
+    /*
+    while (1) {
+        int bytesRecv = SOCKET_ERROR;
+        // Be careful with the array bound, provide some checking mechanism
+        char recvbuf[200] = "";
+        while (bytesRecv == SOCKET_ERROR) {
+            bytesRecv = recv(pc_socket, recvbuf, 32, 0);
+
+            if (bytesRecv == 0 || bytesRecv == WSAECONNRESET) {
+                printf("Client: Connection Closed.\n");
+                break;
+            }
+            else {
+                printf("Client: recv() is OK.\n");
+            }
+
+            if (bytesRecv < 0) {
+                return 0;
+            }
+            else {
+                printf("Client: Bytes received - %ld.\n", recvbuf);
+            }
+
+        }
+    }
+    */
+
+    int recv_result;
+    while (1) {
+        char buffer[5]; // we receive coordinate char and then float data
+        recv_result = recv(pc_socket, buffer, sizeof(buffer), 0);
+        if (recv_result > 0) {
+            printf("Received data: %s\n", buffer[0]);
+        }
+        else if (recv_result == 0) {
+            printf("Connection closed\n");
+        }
+        else {
+            printf("recv failed: %d\n", WSAGetLastError());
+        }
+    }
+    
+    closesocket(pc_socket);
+    WSACleanup();
 	ExitProcess(EXIT_SUCCESS);
 }
 

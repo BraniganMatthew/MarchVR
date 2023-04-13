@@ -1,4 +1,4 @@
 ﻿  winsockBT.cpp
-  test.cpp
-  Generating Code...
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\Winsock Test\Winsock Test\winsockBT.cpp(181,20): warning C4477: 'printf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'int'
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\Winsock Test\Winsock Test\winsockBT.cpp(181,20): warning C4313: 'printf': '%s' in format string conflicts with argument 1 of type 'int'
   Winsock Test.vcxproj -> C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\Winsock Test\x64\Debug\Winsock Test.exe
