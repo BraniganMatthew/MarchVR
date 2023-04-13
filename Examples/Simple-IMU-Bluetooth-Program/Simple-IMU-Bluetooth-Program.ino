@@ -6,7 +6,6 @@
 
 #include "BluetoothSerial.h"
 #include <Adafruit_LSM6DS3TRC.h>
-#include <bits/stdc++.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -18,36 +17,50 @@
 #error Serial Bluetooth not available or not enabled. It is only available for the ESP32 chip.
 #endif
 
+#define MAX_PREV_VALS 15
+#define SMOOTHING_ALPHA 0.3f
+
 // Global Variables
 BluetoothSerial SerialBT;
 String device_name = "MarchVR Best Team";
 Adafruit_LSM6DS3TRC lsm6ds3trc;
-float lower = 8, upper = 15;
 int stepCount = 0;
 bool above = false, below = false;
 float accelAvg[3];
 float accelMagAvg;
-float variance = 0.05f;
-float recentMags[50];
+float variance = 0.15f;
+float recentMags[MAX_PREV_VALS], recentTotal = 0.0f;
 short accelPos[3];
 float recentMagAvg = 0.0f;
-unsigned int nextElement = 0, up = 0;
-bool haveStepped = false, nextStep = false;
+unsigned int nextElement = 0, up = 0, recentSize = 0;
+bool haveStepped = false, nextStep = false, resetTime = true;
+unsigned long startTime;
 
-void floatToStr(float num)
-{
-  String s = String(num, 3);
-  char c[64];
-  s.toCharArray(c, sizeof(c));  
-  printToBTSerial(c);
-}
+float prevVal = 0.0f;
 
-void printToBTSerial(const char* str)
+
+// Calculates average of array in O(1) using on spot recalculations
+float getAccelAvg()
 {
-  size_t len = strlen(str);
-  for (size_t i = 0; i < len; i++){
-    SerialBT.write(str[i]);
-  }
+  sensors_event_t accel, gyro, temp;
+  lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+
+  float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
+
+  recentTotal -= recentMags[nextElement];
+  recentMags[nextElement] = currAccel[up];
+  recentTotal += recentMags[nextElement];
+  nextElement++;
+  recentSize++;
+
+  if (nextElement >= MAX_PREV_VALS)
+    nextElement = 0;
+  if (recentSize >= MAX_PREV_VALS)
+    recentSize = MAX_PREV_VALS;  
+
+  float avg;
+  avg = recentTotal / recentSize;
+  return avg;
 }
 
 void setup() 
@@ -106,112 +119,31 @@ void loop()
   //   delay(100);
   //   return;
   // }
-    
-  // sensors_event_t accel, gyro, temp;
-  // lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-
-  // Serial.println("Sending Accel Data!");
-
-  // //Sends accel data x,y,z in that order via bluetooth serial
-
-  // SerialBT.write((uint8_t*)(&accel.acceleration.x), sizeof(float));
-  // SerialBT.write((uint8_t*)(&accel.acceleration.y), sizeof(float));
-  // SerialBT.write((uint8_t*)(&accel.acceleration.z), sizeof(float));
-  
-
-  // // floatToStr(accel.acceleration.x);
-  // // floatToStr(accel.acceleration.y);
-  // // floatToStr(accel.acceleration.z);
-
-  // Serial.println("Sending Gyro Data!");
-
-  // //Sends gyro data x,y,z in that order via bluetooth serial
-
-  // SerialBT.write((uint8_t*)(&gyro.gyro.x), sizeof(float));
-  // SerialBT.write((uint8_t*)(&gyro.gyro.y), sizeof(float));
-  // SerialBT.write((uint8_t*)(&gyro.gyro.z), sizeof(float));
-
-  // // floatToStr(gyro.gyro.x);
-  // // floatToStr(gyro.gyro.y);
-  // // floatToStr(gyro.gyro.z);
 
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
-  
-  // if(above){
-  //   if (accel.acceleration.z < lower){
-  //     // # send step
-  //     // #stepCount+=1
-  //     above = false;
-  //     Serial.print("Up");
-  //   }
-  // }else{
-  //   if (accel.acceleration.z > upper){
-  //     //# send step
-  //     stepCount++;
-  //     above = true;
-  //     Serial.print("STEP COUNT: ");
-  //     Serial.println(stepCount);
-  //   }
-  // }
-
-  // delay(500);
-
-  float speed = 0.0f;
-
-  // if (accel.acceleration.z < lower){
-  //     // # send step
-  //     // #stepCount+=1
-  //     above = false;
-  //     Serial.print("Up");
-  //   }
-  // }else{
-  //   if (accel.acceleration.z > upper){
-  //     //# send step
-  //     stepCount++;
-  //     above = true;
-  // }
-
-  
-
-  lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-
-  if (nextElement >= 50) {nextElement = 0;}
-
-  // recentMags[nextElement] = sqrt(pow(accel.acceleration.x,2) + pow(accel.acceleration.y,2) + pow(accel.acceleration.z,2));
-  // nextElement++;
-  // unsigned int usedElements = 0;
-  // for (unsigned int i = 0; i < 100; i++){  
-  //   if (recentMags[i] == 0)
-  //     continue;
-  //   recentMagAvg += recentMags[i];
-  //   usedElements++;
-  // }  
-
-  // recentMagAvg /= usedElements;
-
-  // if (recentMagAvg > accelMagAvg && !haveStepped) {
-  //   haveStepped = true;
-  //   stepCount++;    
-  //   Serial.print("STEP COUNT: ");
-  //   Serial.println(stepCount);
-  // }
-
-  // if (recentMagAvg < accelMagAvg && haveStepped){
-  //   haveStepped = false;
-  // }
-
-  float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
-
-  if (currAccel[up]*accelPos[up] < accelPos[up]*accelAvg[up]*(1-variance)){
-    below = true;
-  } else if (currAccel[up]*accelPos[up] > accelPos[up]*accelAvg[up]*(1+variance)){
-    above = true;
-  } else {
-    below = false;
-    above = false;
+  if (resetTime){
+    startTime = millis();
+    resetTime = false;
   }
+  
+
+  //float recentAvg = getAccelAvg();
+  float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
+  prevVal = SMOOTHING_ALPHA*prevVal + (1 - SMOOTHING_ALPHA)*currAccel[up];
+
+  if (prevVal*accelPos[up] > accelPos[up]*accelAvg[up]*(1+variance)){
+    above = true;
+  } else if (prevVal*accelPos[up] < accelPos[up]*accelAvg[up]*(1-variance) && above){
+    below = true;
+  }// else {
+  //  below = false;
+  //  above = false;
+  // }
+
+  unsigned long endTime = millis();
+  unsigned long timeDiff = endTime - startTime;
 
   if (above && below){
     below = false;
@@ -227,17 +159,32 @@ void loop()
     
   }
 
+  if (timeDiff >= 10){
+    //Calculate freqeuncy of steps
+    
+    //Reset step counter
+
+    //Calculate speed between 0.0 and 1.0
+
+    //Send to OpenVR drivers
+  }  
   
   
-  //Serial.print("Accel_X:");
-  //Serial.print(accel.acceleration.x);
-  //Serial.print(",");
-  //Serial.print("Accel_Y:");
-  //Serial.print(accel.acceleration.y);
-  //Serial.print(",");
-  //Serial.print("Accel_Z:");
-  //Serial.print(accel.acceleration.z);
-  //Serial.print(",");
+  // Serial.print("Accel_X:");
+  // Serial.print(accel.acceleration.x);
+  // Serial.print(",");
+  // Serial.print("Accel_Y:");
+  // Serial.print(accel.acceleration.y);
+  // Serial.print(",");
+  // Serial.print("Accel_Z:");
+  // Serial.print(accel.acceleration.z);
+  // Serial.print(",");
+  // Serial.print("AvgAccel:");
+  // Serial.print(accelAvg[up]);
+  // Serial.print(",");
+  // Serial.print("Filtered:");
+  // Serial.println(prevVal);
+  // delay(100);
 
   //Serial.print("Gyro_X:");
   //Serial.print(gyro.gyro.x);
