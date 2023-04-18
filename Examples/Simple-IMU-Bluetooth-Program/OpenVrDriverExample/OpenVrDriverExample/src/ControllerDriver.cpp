@@ -17,6 +17,10 @@ const char* ESP32MACaddress2 = "E8:9F:6D:2F:27:D6";
 
 SOCKET pc_socket;
 
+float movement_speed = 0, prev_recv = 0.0f;
+
+int count = 0;
+
 // Function to change ESP32 Address into proper form
 int str2ba(const char* straddr, BTH_ADDR* btaddr) {
 	int i;
@@ -89,6 +93,9 @@ EVRInitError ControllerDriver::Activate(uint32_t unObjectId)
 		printf("socket() is OK!\n");
 	}
 
+	//Set timeout to 5ms
+	int timeout_ms = 5;
+	setsockopt(pc_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_ms, sizeof(timeout_ms));
 
 	// Connect the socket to ESP32
 	// See https://learn.microsoft.com/en-us/windows/win32/api/ws2bth/ns-ws2bth-sockaddr_bth for more info
@@ -109,6 +116,7 @@ EVRInitError ControllerDriver::Activate(uint32_t unObjectId)
 	}
 	else {
 		printf("connect() is OK!\n");
+		VRDriverLog()->Log("connect() is OK!\n");
 	}
 
 
@@ -139,28 +147,46 @@ void ControllerDriver::RunFrame()
 	// Receive data from the ESP32
 	int recv_result;
 	char buffer[6]; // we receive coordinate char and then float data and make room to add null terminator (1 + 4 + 1)
-	while (1) {
+	float temp;
 
-		recv_result = recv(pc_socket, buffer, sizeof(buffer) - 1, 0);
-		if (recv_result > 0) {
-			buffer[recv_result] = '\0'; //null terminator added to end of buffer
-			printf("Received data: %s\n", buffer);
-		}
-		else if (recv_result == 0) {
-			printf("Connection closed\n");
-		}
-		else {
-			printf("recv failed: %d\n", WSAGetLastError());
-		}
+	recv_result = recv(pc_socket, buffer, sizeof(buffer) - 1, 0);
+	if (recv_result > 0) {
+		buffer[recv_result] = '\0'; //null terminator added to end of buffer
+		printf("Received data: %s\n", buffer);
+		temp = std::stof(buffer);
+		prev_recv = temp;
+		VRDriverLog()->Log("Real Data!");
 	}
-
+	else if (recv_result == 0) {
+		printf("Connection closed\n");
+		VRDriverLog()->Log("Real Data!");
+		temp = prev_recv;
+		//return;
+	}
+	else {
+		printf("recv failed: %d\n", WSAGetLastError());
+		temp = prev_recv;
+		//return;
+	}
+	/*
 	float temp = std::stof(buffer);
-	temp = temp / 10.3;
+
+	if (temp > 0) movement_speed = temp;
+
+	if (count >= 72) {
+		count = 0;
+		movement_speed = 0;
+	}
+	else {
+		
+	}
+	*/
+
 	//Since we used VRScalarUnits_NormalizedTwoSided as the unit, the range is -1 to 1.
-	VRDriverInput()->UpdateScalarComponent(joystickYHandle, temp, 0); //move forward
-	VRDriverInput()->UpdateScalarComponent(trackpadYHandle, temp, 0); //move foward
-	VRDriverInput()->UpdateScalarComponent(joystickXHandle, 0, 0); //change the value to move sideways
-	VRDriverInput()->UpdateScalarComponent(trackpadXHandle, 0, 0); //change the value to move sideways
+		VRDriverInput()->UpdateScalarComponent(joystickYHandle, temp, 0); //move forward
+		VRDriverInput()->UpdateScalarComponent(trackpadYHandle, temp, 0); //move foward
+		VRDriverInput()->UpdateScalarComponent(joystickXHandle, 0, 0); //change the value to move sideways
+		VRDriverInput()->UpdateScalarComponent(trackpadXHandle, 0, 0); //change the value to move sideways
 }
 
 void ControllerDriver::Deactivate()
