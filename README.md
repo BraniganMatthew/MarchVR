@@ -1,17 +1,17 @@
 # MarchVR
-## Completed Work (Prototype)
+## Completed Work
 - LSM6DS3TR accelerometer/gyrometer module sends data to Adafruit Feather V2 microcontroller through I2C
-- IMU data received by the microcontroller and processed on arduino IDE
-- Calibration process implemented to determine the orientation of the device on the user's leg
-- Implemented Infinite Impulse Response (IIR) filter to smooth out accelerometer data and prevent bouncing
-- Calculate speed based on the frequency of steps taken
-- Established Bluetooth communication between OpenVR and tracker to send speed data to determine how fast the user's movement will be
-![Screenshot (18)](https://github.com/BraniganMatthew/MarchVR/blob/main/Screenshot%20(974).png)
+- Bluetooth Classic connection established between microcontroller and PC via a Python script
+- Data is transmitted through the aforementioned Bluetooth connection and filtered by the Python script
+- Accelerometer and gyroscope data is then received and plotted using Python and the Matplotlib library
+![Screenshot (15)](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MicrosoftTeams-image.png)
+![Screenshot (16)](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/Screenshot%20(959).png)
+![Screenshot (17)](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/Screenshot%20(966).png)
+![Screenshot (18)](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/Screenshot%20(968).png)
 
 ## Project Architecture
-As of today, we have an Adafruit ESP32 Feather with 6-bit IMU connected via I2C. This gives us access to all the data and processing power we need to properly calculate steps/frequency all on the tracker itself. Finally we send the speed data to the PC via bluetooth/winsock2 for final processing by the OpenVR driver. We have recently programmed in additional functionality for speed control based on how fast you step as well as a reconnection feature for cases where connection is temporarily lost between the tracker and PC.
+The LSM6DS3TR-C module sends the recorded XYZ accelerometer and gyrometer data to the ESP32 Feather V2 microcontroller using the I2C serial communication protocol and the LSM6DS3TR library provided by Adafruit. This connection is set up using the code found in the Examples folder. The microcontroller is then connected to through the Bluetooth Classic communication standard using an external Python script and the transmission of data is begun. This, as well as the functionality for the receiver was accomplished through the PyBluez library. 1000 points of this data is then plotted using the matplotlib Python library in order to verify the data being received.
 
 ## Known Bugs
-- Lagging issues on OpenVR driver, which we plan to fix by switching from Classical Bluetooth to BLE for communication and improving the step counter algorithm to process data faster
+- The data currently being received via the Python script is fragmented, however data received by the microcontroller is not. This was verified by displaying data through the serial monitor in the Arduino IDE. This indicates that the root cause of this is most likely data fragmentation caused by wireless communication. The solution to this issue is currently being researched.
 - The OpenVR example "controller" currently only works on select games. Games tested include VRChat and Blade & Sorcery, with the controller only working on VRChat.
-(https://youtu.be/ZxvRZggzVb4 "Prototype Demo")
