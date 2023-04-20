@@ -7,6 +7,8 @@
 - Implemented speed calculation based on the frequency of steps taken, which is then sent to the OpenVR driver
 - Established Bluetooth Classic communication between tracker and OpenVR driver
 - Implemented Bluetooth auto-reconnect feature
+
+## Data received from the IMU:
 ![Screenshot (18)](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/Screenshot%20(974).png)
 
 ## Project Architecture
