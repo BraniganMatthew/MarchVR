@@ -17,4 +17,6 @@ As of now, the main elements of our design are an Adafruit ESP32 Feather V2 with
 ## Known Bugs
 - Latency issues, which we plan to fix by switching from Bluetooth Classic to Bluetooth Low Energy and making the step counter algorithm computationally faster
 - The OpenVR driver currently only works on select games. Games tested include VRChat, SCP Labrat, and Blade & Sorcery, with the controller only working on VRChat.
-(https://youtu.be/ZxvRZggzVb4 "Prototype Demo")
+
+## Prototype Demo:
+https://youtu.be/ZxvRZggzVb4
