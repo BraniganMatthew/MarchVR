@@ -1,17 +1,11 @@
-/* Uses parts from the Adafruit LSM6DS3TR-C demo, SerialToSerialBT demo, BLE_client demo, and BLE_server demo for the Adafruit ESP32 Feather V2*/
+/* Uses parts from the Adafruit LSM6DS3TR-C demo and SerialToSerialBT demo for the Adafruit ESP32 Feather V2*/
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 8/30/2023 */
+/* Modified on: 4/13/2023 */
 
-//#include "BluetoothSerial.h"
-
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
+#include "BluetoothSerial.h"
 #include <Adafruit_LSM6DS3TRC.h>
-#include <MadgwickAHRS.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -29,15 +23,9 @@
 // Global Variables
 
   //Bluetooth Variables
+  BluetoothSerial SerialBT;
   String device_name = "MarchVR Best Team";
-  static BLEUUID serviceUUID("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-  static BLEUUID    charUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");
-
-  bool doConnect = false;
-  bool connected = false;
-  bool doScan = false;
-  BLERemoteCharacteristic* pRemoteCharacteristic;
-  BLEAdvertisedDevice* myDevice;
+  Adafruit_LSM6DS3TRC lsm6ds3trc;
 
   //Step Counter Variables
   int stepCount = 0;
@@ -54,106 +42,15 @@
   unsigned long startTime;
   bool resetTime = true;
 
-  //IMU Oridentation Filtering
-  Adafruit_LSM6DS3TRC lsm6ds3trc;
-  Madgwick filter;
-
-//Classes
-
-class MyClientCallback : public BLEClientCallbacks {
-  void onConnect(BLEClient* pclient) {
-  }
-
-  void onDisconnect(BLEClient* pclient) {
-    connected = false;
-    Serial.println("onDisconnect");
-  }
-};
-
-bool connectToServer() {
-    Serial.print("Forming a connection to ");
-    Serial.println(myDevice->getAddress().toString().c_str());
-    
-    BLEClient*  pClient  = BLEDevice::createClient();
-    Serial.println(" - Created client");
-
-    pClient->setClientCallbacks(new MyClientCallback());
-
-    // Connect to the remove BLE Server.
-    pClient->connect(myDevice);  // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
-    Serial.println(" - Connected to server");
-    pClient->setMTU(517); //set client to request maximum MTU from server (default is 23 otherwise)
-  
-    // Obtain a reference to the service we are after in the remote BLE server.
-    BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
-    if (pRemoteService == nullptr) {
-      Serial.print("Failed to find our service UUID: ");
-      Serial.println(serviceUUID.toString().c_str());
-      pClient->disconnect();
-      return false;
-    }
-    Serial.println(" - Found our service");
-
-
-    // Obtain a reference to the characteristic in the service of the remote BLE server.
-    pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
-    if (pRemoteCharacteristic == nullptr) {
-      Serial.print("Failed to find our characteristic UUID: ");
-      Serial.println(charUUID.toString().c_str());
-      pClient->disconnect();
-      return false;
-    }
-    Serial.println(" - Found our characteristic");
-
-    // Read the value of the characteristic.
-    if(pRemoteCharacteristic->canRead()) {
-      std::string value = pRemoteCharacteristic->readValue();
-      Serial.print("The characteristic value was: ");
-      Serial.println(value.c_str());
-    }
-
-    connected = true;
-    return true;
-}
-/**
- * Scan for BLE servers and find the first one that advertises the service we are looking for.
- */
-class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
- /**
-   * Called for each advertising BLE server.
-   */
-  void onResult(BLEAdvertisedDevice advertisedDevice) {
-    Serial.print("BLE Advertised Device found: ");
-    Serial.println(advertisedDevice.toString().c_str());
-
-    // We have found a device, let us now see if it contains the service we are looking for.
-    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID)) { //Stop scanning if the service is there
-
-      BLEDevice::getScan()->stop();
-      myDevice = new BLEAdvertisedDevice(advertisedDevice);
-      doConnect = true;
-      doScan = true;
-
-    } // Found our server
-  } // onResult
-}; // MyAdvertisedDeviceCallbacks
-
 
 
 void setup() 
 {
   // Setup serial debugging
   Serial.begin(115200);
-
-  //Setup BLE
-  BLEDevice::init("MarchVR BLE Client Tracker");
-
-  BLEScan* pBLEScan = BLEDevice::getScan();
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  pBLEScan->setInterval(1349);
-  pBLEScan->setWindow(449);
-  pBLEScan->setActiveScan(true);
-  pBLEScan->start(5, false);
+  //Setup Serial Over BlueTooth
+  SerialBT.begin(device_name);
+  Serial.printf("Bluetooth is on!\n");
 
   //Find IMU
   if (!lsm6ds3trc.begin_I2C()) {
@@ -191,9 +88,7 @@ void setup()
     else
       accelPos[i] = 1;
   }
-
-  filter.begin(25);
-
+  
   Serial.println("Calibration done!");
   
 
@@ -202,21 +97,16 @@ void setup()
 void loop() 
 {
   //Waits until bluetooth is connected
-  if (doConnect == true) {
-    if (connectToServer()) {
-      Serial.println("We are now connected to the BLE Server.");
-    } else {
-      Serial.println("We have failed to connect to the server; there is nothin more we will do.");
-    }
-    doConnect = false;
+  if (!SerialBT.connected()){
+    Serial.println("Not Connected to Device!");
+    delay(100);
+    return;
   }
 
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
-  filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
-
-  //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
+  //Starts timer for frequencyt check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
     startTime = millis();
     resetTime = false;
@@ -273,16 +163,11 @@ void loop()
       //send to vr driver (sending as char string)
       char buffer[5];
       dtostrf(speed, 4, 2, buffer);
-      //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
-      String tmp;
-      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll();
-      Serial.println(tmp);
-      if (connected)
-        pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
+      SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
     } else {
       //too slow, not sending
     }
   }  
   
-  delay(40);
+
 }
