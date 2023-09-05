@@ -238,10 +238,15 @@ void loop()
     below = false;
     above = false;
     if (nextStep){
-      stepCount++;
+      //stepCount++;
       nextStep = false;
-      Serial.print("STEP COUNT: ");
-      Serial.println(stepCount);
+      String tmp;
+      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll();
+      Serial.println(tmp);
+      if (connected)
+        pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
+      //Serial.print("STEP COUNT: ");
+      //Serial.println(stepCount);
     } else {
       nextStep = true;
     }
@@ -284,5 +289,5 @@ void loop()
     }
   }  
   
-  delay(40);
+  delay(35);
 }

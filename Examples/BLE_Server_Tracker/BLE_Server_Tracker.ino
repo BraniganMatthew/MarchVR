@@ -29,11 +29,13 @@
 // Global Variables
 
   //Bluetooth Variables
-  String device_name = "MarchVR Best Team";
-  static BLEUUID serviceUUID("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-  static BLEUUID    charUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+  String device_name = "MarchVR BLE Server Tracker";
+  #define serviceUUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+  #define charUUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
   BLEServer* pServer = NULL;
   BLECharacteristic* pCharacteristic = NULL;
+  bool isConnected = false, prevConnected = false;
+  short numDevsConnected = 0;
 
   //Step Counter Variables
   int stepCount = 0;
@@ -57,13 +59,12 @@
 //Classes
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
+      isConnected = true;
       BLEDevice::startAdvertising();
     };
 
     void onDisconnect(BLEServer* pServer) {
-      delay(500); // give the bluetooth stack the chance to get things ready
-      pServer->startAdvertising(); // restart advertising
-      Serial.println("start advertising");
+      isConnected = false;
     }
 };
 
@@ -92,8 +93,9 @@ void setup()
   Serial.begin(115200);
 
   //Setup BLE
-  BLEDevice::init("MarchVR BLE Server Tracker");
-
+  //BLEDevice::init("MarchVR BLE Server Tracker");
+  BLEDevice::init("ESP32");
+  
   // Create the BLE Server
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
@@ -105,7 +107,8 @@ void setup()
   pCharacteristic = pService->createCharacteristic(
                       charUUID,
                       BLECharacteristic::PROPERTY_READ   |
-                      BLECharacteristic::PROPERTY_WRITE
+                      BLECharacteristic::PROPERTY_WRITE  |
+                      BLECharacteristic::PROPERTY_INDICATE
                     );
 
   // Create a BLE Descriptor
@@ -164,7 +167,6 @@ void setup()
   filter.begin(25);
 
   Serial.println("Calibration done!");
-  
 
 }
 
@@ -175,6 +177,17 @@ void loop()
 
   filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
 
+  if (!isConnected && prevConnected){
+    delay(500); // give the bluetooth stack the chance to get things ready
+    pServer->startAdvertising(); // restart advertising
+    Serial.println("start advertising");
+    prevConnected = isConnected;
+  }
+
+  if (isConnected && !prevConnected){
+    prevConnected = isConnected;
+  }
+  
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
     startTime = millis();
@@ -241,5 +254,5 @@ void loop()
     }
   }  
   
-  delay(40);
+  delay(35);
 }
