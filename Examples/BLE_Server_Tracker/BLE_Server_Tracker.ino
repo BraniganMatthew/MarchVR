@@ -41,6 +41,7 @@
   int stepCount = 0;
   bool above = false, below = false, nextStep = false;
   float variance = 0.1f;
+  bool trackerStep1 = false, trackerStep2 = false;
 
   //Calibration Variables
   float accelAvg[3];
@@ -73,13 +74,14 @@ class MyCallbacks: public BLECharacteristicCallbacks {
       String value = pCharacteristic->getValue().c_str();
 
       if (value.length() > 0) {
-        Serial.println("*********");
-        Serial.print("New value: ");
-        for (int i = 0; i < value.length(); i++)
-          Serial.print(value[i]);
-        Serial.println();
-        Serial.println("*********");
-        stepCount++;
+        // Serial.println("*********");
+        // Serial.print("New value: ");
+        // for (int i = 0; i < value.length(); i++)
+        //   Serial.print(value[i]);
+        // Serial.println();
+        // Serial.println("*********");
+        trackerStep2 = true;
+        Serial.println("TRACKER STEP 2");
       }
     }
 };
@@ -210,10 +212,11 @@ void loop()
     below = false;
     above = false;
     if (nextStep){
-      stepCount++;
+      //stepCount++;
+      trackerStep1 = true;
       nextStep = false;
-      Serial.print("STEP COUNT: ");
-      Serial.println(stepCount);
+      Serial.println("TRACKER STEP 1");
+      //Serial.println(stepCount);
     } else {
       nextStep = true;
     }
@@ -221,19 +224,21 @@ void loop()
   }
 
   //Calculates speed and sends it to OpenVR if it is high enough
-  if (stepCount >= 2){
+  if (trackerStep1 && trackerStep2){
     //Stop Timer
     unsigned long endTime = millis();
     unsigned long timeDiff = endTime - startTime;
 
 
     //Calculate freqeuncy of steps
-    float freq = stepCount/((float)timeDiff / 1000);
+    float freq = 2/((float)timeDiff / 1000);
     float speed = 0.3871*freq - 0.1038;
 
     //Reset step counter and timer
     stepCount = 0;
     resetTime = true;
+    trackerStep1 = false;
+    trackerStep2 = false;
 
     //Calculate speed between 0.0 and 1.0
     Serial.println(freq);
