@@ -2,31 +2,26 @@ from PySide6.QtWidgets import *
 from PySide6.QtGui import QKeySequence, QPalette, QColor, QAction, QFont
 from PySide6.QtCore import QtMsgType
 from PySide6 import QtCore, QtGui, QtWidgets
-import pyqtgraph
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from BlurWindow.blurWindow import blur
-import socket
 import sys
+import time
+import asyncio
+from bleak import BleakClient, BleakScanner
 
-# SOCKET STUFF
-# socky = socket.create_connection(('10.245.26.51', 5555))
-# socky = socket.create_connection(('10.245.26.51', 5555))
-# socky.settimeout(2.0)
-# socky.send((":SOUR1:FREQ 100\n").encode('utf-8'))
+serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+characteristicUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-# # Create a socket object
-# server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def listToString(inputList):
+    outputString = ""
+    for i in inputList:
+        outputString += chr(i)
+    return outputString
 
-# # Define the server address and port
-# server_address = ('localhost', 12345)  # Change this to the actual server address and port
-
-# # Connect to the server
-# server_socket.connect(server_address)
-
-# Define a buffer size for receiving data
-buffer_size = 1024
+def notification_handler(sender, data):
+            dataString = listToString(list(data))
+            print(dataString)
 
 winWidth = 960
 winHeight = 540
@@ -62,11 +57,6 @@ class Window(QMainWindow):
   
         # setting title
         self.setWindowTitle("March VR Hub")
-        #self.setStyleSheet("background-color: white;")
-
-        # BLURRING 
-        #blur(self.winId())
-        #self.setStyleSheet("background-color: rgba(0, 0, 0, 0)")
   
         # setting geometry
         self.setGeometry(winX, winY, winWidth, winHeight)
@@ -74,6 +64,12 @@ class Window(QMainWindow):
   
         # calling method
         self.UiComponents()
+
+        global num
+        num = 0
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update)
+        self.timer.start(1000)
   
         # showing all the widgets
         self.show()
@@ -81,7 +77,7 @@ class Window(QMainWindow):
     # method for widgets
     def UiComponents(self):
         
-        # CALIBRATE BUTTON -------------------------------------------------------------------------------
+        # CALIBRATE BUTTON
 
         # creating a push button
         calButton = QPushButton("Recalibrate", self)
@@ -167,6 +163,7 @@ class Window(QMainWindow):
 
         # battery info
         battery2 = -1
+        global t2bat
         t2bat = QLabel("Battery Life: 100%", self)
         t2bat.setGeometry(t2x, t2y + 30, 200, 50)
         t2bat.setStyleSheet("QLabel{font-size: 12pt; color: black;}")
@@ -175,6 +172,11 @@ class Window(QMainWindow):
         chart2a = Canvas(self, "Tracker 2 Accelerometer", 650, 50, 200, 200)
         chart1g = Canvas(self, "Tracker 1 Gyroscope", 400, 300, 200, 200)
         chart2g = Canvas(self, "Tracker 2 Gyroscope", 650, 300, 200, 200)
+
+    async def update(self):
+        await asyncio.sleep(1)
+        # pass
+        #print("sdgs")
   
     
     # action method
@@ -200,6 +202,30 @@ App = QApplication(sys.argv)
   
 # create the instance of our Window
 window = Window()
+
+#--------------------------
+async def main():
+    scanner = BleakScanner(service_uuids=serviceUUID, winrt=dict(use_cached_services=False))
+    server = await scanner.find_device_by_name("ESP32")
+    async with BleakClient(server) as client:
+        print("Printing services: ")
+        services = client.services
+        for s in services:
+            print(s)
+
+        print("Printing characteristic: ")
+        try: 
+            await client.start_notify(characteristicUUID, notification_handler)
+            # while(True):
+                # await asyncio.sleep(1)
+                
+                
+        except:
+            print("Exited")
+            await client.disconnect()
+
+asyncio.run(main())
+#--------------------------
 
 # start the app
 sys.exit(App.exec())
