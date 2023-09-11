@@ -154,6 +154,7 @@ void setup()
     accelAvg[2] += accel.acceleration.z;
   }
   unsigned int maxVal = 0;
+
   //Determines what side is up and if the accelerometer is flipped or not
   for (unsigned int i = 0; i < 3; i++){
     accelAvg[i] /= 100.0f;
@@ -178,8 +179,10 @@ void loop()
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
+  //Update the IMU with new data
   filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
 
+  //If a device disconnects
   if (!isConnected && prevConnected){
     delay(500); // give the bluetooth stack the chance to get things ready
     pServer->startAdvertising(); // restart advertising
@@ -187,6 +190,7 @@ void loop()
     prevConnected = isConnected;
   }
 
+  //If new device connects
   if (isConnected && !prevConnected){
     prevConnected = isConnected;
   }
@@ -257,7 +261,7 @@ void loop()
       String tmp;
       tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll() + " Speed: " + speed;
       const char* tmp_c = tmp.c_str();
-      pCharacteristic->setValue((uint8_t*)&tmp_c, tmp.length());
+      pCharacteristic->setValue((uint8_t*)tmp_c, tmp.length());
       pCharacteristic->notify();
       Serial.println(tmp);
     } else {
