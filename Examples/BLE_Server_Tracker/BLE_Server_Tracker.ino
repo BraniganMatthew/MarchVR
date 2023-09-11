@@ -110,6 +110,7 @@ void setup()
                       charUUID,
                       BLECharacteristic::PROPERTY_READ   |
                       BLECharacteristic::PROPERTY_WRITE  |
+                      BLECharacteristic::PROPERTY_NOTIFY |
                       BLECharacteristic::PROPERTY_INDICATE
                     );
 
@@ -251,8 +252,13 @@ void loop()
       char buffer[5];
       dtostrf(speed, 4, 2, buffer);
       //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
+
+      //Send data with orienation to all connected devices
       String tmp;
-      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll();
+      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll() + " Speed: " + speed;
+      const char* tmp_c = tmp.c_str();
+      pCharacteristic->setValue((uint8_t*)&tmp_c, tmp.length());
+      pCharacteristic->notify();
       Serial.println(tmp);
     } else {
       //too slow, not sending
