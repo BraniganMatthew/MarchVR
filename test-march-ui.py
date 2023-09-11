@@ -122,7 +122,7 @@ class Window(QMainWindow):
         mainText.setStyleSheet("QLabel{font-size: 18pt;}")
         mainText.setAlignment(QtCore.Qt.AlignCenter)
 
-        # TRACKER 1 TEXT -------------------------------------------------------------------------------
+        # TRACKER 1 INFO -------------------------------------------------------------------------------
         t1x = 25
         t1y = 200
         t1 = QLabel("Tracker 1: ", self)
@@ -138,12 +138,18 @@ class Window(QMainWindow):
         global t1discon
         t1discon = QLabel("Disonnected", self)
         t1discon.setGeometry(t1x + 70, t1y, 200, 50)
-        t1discon.setStyleSheet("QLabel{font-size: 12pt color: red;}")
+        t1discon.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
         t1discon.hide()
 
-        # TRACKER 2 TEXT -------------------------------------------------------------------------------
+        # battery info
+        battery1 = -1
+        t1bat = QLabel("Battery Life: 100%", self)
+        t1bat.setGeometry(t1x, t1y + 30, 200, 50)
+        t1bat.setStyleSheet("QLabel{font-size: 12pt; color: black;}")
+
+        # TRACKER 2 INFO  -------------------------------------------------------------------------------
         t2x = 25
-        t2y = 225
+        t2y = 275
         t2 = QLabel("Tracker 2: ", self)
         t2.setGeometry(t2x, t2y, 200, 50)
         t2.setStyleSheet("QLabel{font-size: 12pt;}")
@@ -158,6 +164,12 @@ class Window(QMainWindow):
         t2discon.setGeometry(t2x + 70, t2y, 200, 50)
         t2discon.setStyleSheet("QLabel{font-size: 12pt; color: red}")
         t2discon.hide()
+
+        # battery info
+        battery2 = -1
+        t2bat = QLabel("Battery Life: 100%", self)
+        t2bat.setGeometry(t2x, t2y + 30, 200, 50)
+        t2bat.setStyleSheet("QLabel{font-size: 12pt; color: black;}")
 
         chart1a = Canvas(self, "Tracker 1 Accelerometer", 400, 50, 200, 200)
         chart2a = Canvas(self, "Tracker 2 Accelerometer", 650, 50, 200, 200)
