@@ -31,9 +31,13 @@
   //Bluetooth Variables
   String device_name = "MarchVR BLE Server Tracker";
   #define serviceUUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-  #define charUUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+  #define charUUID_TRK "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+  #define charUUID_GUI "aad41096-f795-4b3b-83bb-858051e5e284"
+  #define charUUID_DRV "22d7a034-791d-49f6-a84e-ef78ab2473ad"
   BLEServer* pServer = NULL;
-  BLECharacteristic* pCharacteristic = NULL;
+  BLECharacteristic* pCharacteristic_TRK = NULL;
+  BLECharacteristic* pCharacteristic_GUI = NULL;
+  BLECharacteristic* pCharacteristic_DRV = NULL;
   bool isConnected = false, prevConnected = false;
   short numDevsConnected = 0;
 
@@ -74,12 +78,20 @@ class MyCallbacks: public BLECharacteristicCallbacks {
       String value = pCharacteristic->getValue().c_str();
 
       if (value.length() > 0) {
-        // Serial.println("*********");
-        // Serial.print("New value: ");
-        // for (int i = 0; i < value.length(); i++)
-        //   Serial.print(value[i]);
-        // Serial.println();
-        // Serial.println("*********");
+        //Check if valid
+
+        //Check where it is coming from
+
+        //Check where it will be going to
+
+        //If to server
+
+        //Else to tracker 1
+
+        //Else to GUI
+
+        //Else to Driver
+
         trackerStep2 = true;
         Serial.println("TRACKER STEP 2");
       }
@@ -106,17 +118,39 @@ void setup()
   BLEService *pService = pServer->createService(serviceUUID);
 
   // Create a BLE Characteristic
-  pCharacteristic = pService->createCharacteristic(
-                      charUUID,
+  pCharacteristic_TRK = pService->createCharacteristic(
+                      charUUID_TRK,
                       BLECharacteristic::PROPERTY_READ   |
                       BLECharacteristic::PROPERTY_WRITE  |
                       BLECharacteristic::PROPERTY_NOTIFY |
                       BLECharacteristic::PROPERTY_INDICATE
                     );
 
+  pCharacteristic_GUI = pService->createCharacteristic(
+                    charUUID_GUI,
+                    BLECharacteristic::PROPERTY_READ   |
+                    BLECharacteristic::PROPERTY_WRITE  |
+                    BLECharacteristic::PROPERTY_NOTIFY |
+                    BLECharacteristic::PROPERTY_INDICATE
+                  );
+  
+  pCharacteristic_DRV = pService->createCharacteristic(
+                    charUUID_DRV,
+                    BLECharacteristic::PROPERTY_READ   |
+                    BLECharacteristic::PROPERTY_WRITE  |
+                    BLECharacteristic::PROPERTY_NOTIFY |
+                    BLECharacteristic::PROPERTY_INDICATE
+                  );
+
   // Create a BLE Descriptor
-  pCharacteristic->addDescriptor(new BLE2902());
-  pCharacteristic->setCallbacks(new MyCallbacks());
+  pCharacteristic_TRK->addDescriptor(new BLE2902());
+  pCharacteristic_TRK->setCallbacks(new MyCallbacks());
+
+  pCharacteristic_GUI->addDescriptor(new BLE2902());
+  pCharacteristic_GUI->setCallbacks(new MyCallbacks());
+
+  pCharacteristic_DRV->addDescriptor(new BLE2902());
+  pCharacteristic_DRV->setCallbacks(new MyCallbacks());
 
 
   // Start the service
@@ -261,8 +295,8 @@ void loop()
       String tmp;
       tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll() + " Speed: " + speed;
       const char* tmp_c = tmp.c_str();
-      pCharacteristic->setValue((uint8_t*)tmp_c, tmp.length());
-      pCharacteristic->notify();
+      pCharacteristic_TRK->setValue((uint8_t*)tmp_c, tmp.length());
+      pCharacteristic_TRK->notify();
       Serial.println(tmp);
     } else {
       //too slow, not sending
