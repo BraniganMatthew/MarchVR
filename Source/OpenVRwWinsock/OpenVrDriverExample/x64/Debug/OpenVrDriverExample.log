@@ -1,0 +1,7 @@
+﻿  ControllerDriver.cpp
+C:\Users\richa\MarchVR_Example\openvr-driver-example\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(60,13): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+  DeviceFactory.cpp
+  DeviceProvider.cpp
+  Generating Code...
+     Creating library C:\Users\richa\MarchVR_Example\openvr-driver-example\OpenVrDriverExample\x64\Debug\OpenVrDriverExample.lib and object C:\Users\richa\MarchVR_Example\openvr-driver-example\OpenVrDriverExample\x64\Debug\OpenVrDriverExample.exp
+  OpenVrDriverExample.vcxproj -> C:\Users\richa\MarchVR_Example\openvr-driver-example\OpenVrDriverExample\x64\Debug\OpenVrDriverExample.dll

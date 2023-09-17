@@ -1,0 +1,7 @@
+﻿  ControllerDriver.cpp
+  DeviceFactory.cpp
+  DeviceProvider.cpp
+  Generating Code...
+     Creating library C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\OpenVRwWinsock\x64\Release\OpenVrDriverExample.lib and object C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\OpenVRwWinsock\x64\Release\OpenVrDriverExample.exp
+  LINK : /LTCG specified but no code generation required; remove /LTCG from the link command line to improve linker performance
+  OpenVrDriverExample.vcxproj -> C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\OpenVRwWinsock\x64\Release\OpenVrDriverExample.dll
