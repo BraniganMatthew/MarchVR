@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 9/4/2023 */
+/* Modified on: 9/19/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -241,7 +241,7 @@ void loop()
       //stepCount++;
       nextStep = false;
       String tmp;
-      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll();
+      tmp = tmp + "%;TK2;TK1;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";0;47";
       Serial.println(tmp);
       if (connected)
         pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
@@ -280,7 +280,6 @@ void loop()
       dtostrf(speed, 4, 2, buffer);
       //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
       String tmp;
-      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll();
       Serial.println(tmp);
       if (connected)
         pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());

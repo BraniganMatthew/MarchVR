@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 9/4/2023 */
+/* Modified on: 9/19/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -12,6 +12,7 @@
 #include <BLE2902.h>
 #include <Adafruit_LSM6DS3TRC.h>
 #include <MadgwickAHRS.h>
+#include <Vector.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -25,6 +26,7 @@
 
 //VALUE DEFINES
 #define SMOOTHING_ALPHA 0.3f
+#define MAX_DATA_PARA   20
 
 // Global Variables
 
@@ -38,8 +40,9 @@
   BLECharacteristic* pCharacteristic_TRK = NULL;
   BLECharacteristic* pCharacteristic_GUI = NULL;
   BLECharacteristic* pCharacteristic_DRV = NULL;
-  bool isConnected = false, prevConnected = false;
-  short numDevsConnected = 0;
+  bool isConnected = false, prevConnected = false, newBLERsp = false;
+  String BLE_Wrt_Rsp;
+  String BLE_RSP_ARRAY[MAX_DATA_PARA];
 
   //Step Counter Variables
   int stepCount = 0;
@@ -73,33 +76,77 @@ class MyServerCallbacks: public BLEServerCallbacks {
     }
 };
 
+void splitString(String input, Vector<String>* output, char delim)
+{
+  uint8_t count = 0;
+  //Vector<String> output;
+  String tmp = "";
+
+  for (uint8_t i = 0; i < input.length(); i++){
+    
+    // if (count >= MAX_DATA_PARA){
+    //   Serial.println("INPUT TOO LARGE. QUITTING");
+    //   break;
+    // }
+    char tmpChar = input.charAt(i);
+    if (tmpChar == delim){
+      count++;
+      output->push_back(tmp.c_str());
+      tmp = "";
+      continue;
+    }
+    tmp += tmpChar;
+    if (i+1 == input.length()){
+      output->push_back(tmp.c_str());
+    }
+  }
+}
+
+bool assertCheckSum(Vector<String>* input)
+{
+  //Will XOR everything, execpt for the start and end byte
+}
+
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
       String value = pCharacteristic->getValue().c_str();
+      
 
       if (value.length() > 0) {
-        //Check if valid
+        BLE_Wrt_Rsp = "";
+        BLE_Wrt_Rsp += value.c_str();
 
-        //Check where it is coming from
-
-        //Check where it will be going to
-
-        //If to server
-
-        //Else to tracker 1
-
-        //Else to GUI
-
-        //Else to Driver
-
-        trackerStep2 = true;
-        Serial.println("TRACKER STEP 2");
+        newBLERsp = true;
+        Serial.println(value);
       }
     }
 };
 
+void bleResponse()
+{
+  Vector<String> splitVal;
+  splitVal.setStorage(BLE_RSP_ARRAY);
+  splitString(BLE_Wrt_Rsp, &splitVal, ';');
 
+  // //Check if valid
+  // if (splitVal.at(0) != "%"){
+  //   Serial.println("Invalid Starting Byte");
+  //   return;
+  // }
 
+  //Check where it is coming from
+
+  //Check where it will be going to
+
+  //If to server
+  trackerStep2 = true;
+
+  //Else to tracker 1
+
+  //Else to GUI
+
+  //Else to Driver
+}
 
 void setup() 
 {
@@ -229,6 +276,11 @@ void loop()
     prevConnected = isConnected;
   }
   
+  if (newBLERsp){
+    bleResponse();
+    newBLERsp = false;
+  }
+
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
     startTime = millis();
@@ -295,13 +347,13 @@ void loop()
       String tmp;
       tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll() + " Speed: " + speed;
       const char* tmp_c = tmp.c_str();
-      pCharacteristic_TRK->setValue((uint8_t*)tmp_c, tmp.length());
-      pCharacteristic_TRK->notify();
+      pCharacteristic_DRV->setValue((uint8_t*)tmp_c, tmp.length());
+      pCharacteristic_DRV->notify();
       Serial.println(tmp);
     } else {
       //too slow, not sending
     }
   }  
   
-  delay(35);
+  delay(20);
 }
