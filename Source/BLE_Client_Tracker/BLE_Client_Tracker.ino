@@ -12,6 +12,7 @@
 #include <BLE2902.h>
 #include <Adafruit_LSM6DS3TRC.h>
 #include <MadgwickAHRS.h>
+#include <Vector.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -25,6 +26,7 @@
 
 //VALUE DEFINES
 #define SMOOTHING_ALPHA 0.3f
+#define MAX_DATA_PARA   20
 
 // Global Variables
 
@@ -38,6 +40,7 @@
   bool doScan = false;
   BLERemoteCharacteristic* pRemoteCharacteristic;
   BLEAdvertisedDevice* myDevice;
+  String BLE_RSP_ARRAY[MAX_DATA_PARA];
 
   //Step Counter Variables
   int stepCount = 0;
@@ -69,6 +72,44 @@ class MyClientCallback : public BLEClientCallbacks {
     Serial.println("onDisconnect");
   }
 };
+
+uint8_t checkSumCalc(Vector<String>* input)
+{
+  uint8_t calcSum = 0;
+  //Will XOR everything, execpt for the start and end byte
+  for (uint8_t i = 1; i < input->size()-1; i++){
+    for (uint8_t j = 0; j < input->at(i).length(); j++){
+      calcSum = calcSum ^ (uint8_t)input->at(i).charAt(j);
+    }
+  }
+  return calcSum;
+}
+
+void splitString(String input, Vector<String>* output, char delim)
+{
+  uint8_t count = 0;
+  //Vector<String> output;
+  String tmp = "";
+
+  for (uint8_t i = 0; i < input.length(); i++){
+    
+    // if (count >= MAX_DATA_PARA){
+    //   Serial.println("INPUT TOO LARGE. QUITTING");
+    //   break;
+    // }
+    char tmpChar = input.charAt(i);
+    if (tmpChar == delim){
+      count++;
+      output->push_back(tmp.c_str());
+      tmp = "";
+      continue;
+    }
+    tmp += tmpChar;
+    if (i+1 == input.length()){
+      output->push_back(tmp.c_str());
+    }
+  }
+}
 
 bool connectToServer() {
     Serial.print("Forming a connection to ");
@@ -165,10 +206,16 @@ void setup()
 
   Serial.println("LSM6DS3TR-C Found!");
 
+  lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
+  lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
+  lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
+  lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
+
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
   sensors_event_t accel, gyro, temp;
+  lsm6ds3trc.enablePedometer(true);
   //Testing average calibration
   Serial.println("Calibrating please wait...");
   //Gets 100 samples of idling
@@ -192,7 +239,7 @@ void setup()
       accelPos[i] = 1;
   }
 
-  filter.begin(25);
+  filter.begin(26);
 
   Serial.println("Calibration done!");
   
@@ -213,14 +260,39 @@ void loop()
 
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+  static unsigned long prevReadingTime = millis();
 
-  filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
+  if (millis() - prevReadingTime >= 39){
+    prevReadingTime = millis();
+    filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
+  }
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
     startTime = millis();
     resetTime = false;
   }
+
+  // static uint16_t oldStepValue = 0;
+  // if (lsm6ds3trc.readPedometer() - oldStepValue > 0){
+  //   if (lsm6ds3trc.readPedometer() + 1 == 0){
+  //     lsm6ds3trc.resetPedometer();
+  //   }
+  //   oldStepValue = lsm6ds3trc.readPedometer();
+  //   String tmp;
+  //   tmp = tmp + "%;TK2;TK1;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";0";
+  //   Vector<String> splitTmp;
+  //   splitTmp.setStorage(BLE_RSP_ARRAY);
+  //   splitString(tmp, &splitTmp, ';');
+  //   for (uint8_t i  = 0; i < splitTmp.size(); i++){
+  //     Serial.println(splitTmp.at(i));
+  //   }
+  //   tmp.remove(tmp.length()-1);
+  //   tmp = tmp + checkSumCalc(&splitTmp);
+  //   Serial.println(tmp);
+  //   if (connected)
+  //     pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
+  // }
   
   //Applies IIR smoothing filter to acceleration
   float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
@@ -238,55 +310,20 @@ void loop()
     below = false;
     above = false;
     if (nextStep){
-      //stepCount++;
       nextStep = false;
       String tmp;
-      tmp = tmp + "%;TK2;TK1;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";0;47";
+      tmp = tmp + "%;TK2;TK1;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";0";
+      Vector<String> splitTmp;
+      splitTmp.setStorage(BLE_RSP_ARRAY);
+      splitString(tmp, &splitTmp, ';');
+      tmp.remove(tmp.length()-1);
+      tmp = tmp + checkSumCalc(&splitTmp);
       Serial.println(tmp);
       if (connected)
         pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
-      //Serial.print("STEP COUNT: ");
-      //Serial.println(stepCount);
     } else {
       nextStep = true;
     }
-    
+
   }
-
-  //Calculates speed and sends it to OpenVR if it is high enough
-  if (stepCount >= 2){
-    //Stop Timer
-    unsigned long endTime = millis();
-    unsigned long timeDiff = endTime - startTime;
-
-
-    //Calculate freqeuncy of steps
-    float freq = stepCount/((float)timeDiff / 1000);
-    float speed = 0.3871*freq - 0.1038;
-
-    //Reset step counter and timer
-    stepCount = 0;
-    resetTime = true;
-
-    //Calculate speed between 0.0 and 1.0
-    Serial.println(freq);
-    
-
-    //Send to OpenVR drivers
-    if (speed >= 0.1){
-      Serial.println(speed);
-      //send to vr driver (sending as char string)
-      char buffer[5];
-      dtostrf(speed, 4, 2, buffer);
-      //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
-      String tmp;
-      Serial.println(tmp);
-      if (connected)
-        pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
-    } else {
-      //too slow, not sending
-    }
-  }  
-  
-  delay(35);
 }

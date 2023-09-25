@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 9/19/2023 */
+/* Modified on: 9/25/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -102,9 +102,29 @@ void splitString(String input, Vector<String>* output, char delim)
   }
 }
 
+uint8_t checkSumCalc(Vector<String>* input)
+{
+  uint8_t calcSum = 0;
+  //Will XOR everything, execpt for the start and end byte
+  for (uint8_t i = 1; i < input->size()-1; i++){
+    for (uint8_t j = 0; j < input->at(i).length(); j++){
+      calcSum = calcSum ^ (uint8_t)input->at(i).charAt(j);
+    }
+  }
+  return calcSum;
+}
+
 bool assertCheckSum(Vector<String>* input)
 {
-  //Will XOR everything, execpt for the start and end byte
+  uint8_t sum = input->at(input->size()-1).toInt();
+  uint8_t calcSum = checkSumCalc(input);
+  if (sum == calcSum){
+    Serial.printf("They're equal!\n");
+    return true;
+  } else {
+    Serial.printf("Recieved Sum: %d is different from calculated sum: %d\n", sum, calcSum);
+    return false;
+  }
 }
 
 class MyCallbacks: public BLECharacteristicCallbacks {
@@ -129,10 +149,14 @@ void bleResponse()
   splitString(BLE_Wrt_Rsp, &splitVal, ';');
 
   // //Check if valid
-  // if (splitVal.at(0) != "%"){
-  //   Serial.println("Invalid Starting Byte");
-  //   return;
-  // }
+  if (splitVal.at(0) != "%"){
+    Serial.println("Invalid Starting Byte");
+    return;
+  }
+  if (!assertCheckSum(&splitVal)){
+    Serial.println("Failed Sum Check");
+    return;
+  }
 
   //Check where it is coming from
 
