@@ -215,7 +215,7 @@ void setup()
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
   sensors_event_t accel, gyro, temp;
-  lsm6ds3trc.enablePedometer(true);
+  lsm6ds3trc.enablePedometer(false);
   //Testing average calibration
   Serial.println("Calibrating please wait...");
   //Gets 100 samples of idling

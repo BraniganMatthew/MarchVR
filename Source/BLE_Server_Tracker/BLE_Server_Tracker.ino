@@ -119,7 +119,7 @@ bool assertCheckSum(Vector<String>* input)
   uint8_t sum = input->at(input->size()-1).toInt();
   uint8_t calcSum = checkSumCalc(input);
   if (sum == calcSum){
-    Serial.printf("They're equal!\n");
+    //Serial.printf("They're equal!\n");
     return true;
   } else {
     Serial.printf("Recieved Sum: %d is different from calculated sum: %d\n", sum, calcSum);
@@ -137,7 +137,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         BLE_Wrt_Rsp += value.c_str();
 
         newBLERsp = true;
-        Serial.println(value);
+        //Serial.println(value);
       }
     }
 };
@@ -159,11 +159,25 @@ void bleResponse()
   }
 
   //Check where it is coming from
+  String src = splitVal.at(1);
 
   //Check where it will be going to
+  String dst = splitVal.at(2);
+
+  // Serial.printf("SRC %s DST %s\n", src.c_str(), dst.c_str());
 
   //If to server
-  trackerStep2 = true;
+  if (dst == "TK1"){
+    if (src == "TK2"){
+      trackerStep2 = true;
+    } else if (src.c_str() == "GUI") {
+
+    } else if (src.c_str() == "DRV") {
+      
+    }
+  
+  }
+  
 
   //Else to tracker 1
 
@@ -245,6 +259,11 @@ void setup()
 
   Serial.println("LSM6DS3TR-C Found!");
 
+  lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
+  lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
+  lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
+  lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
+
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
@@ -273,7 +292,7 @@ void setup()
       accelPos[i] = 1;
   }
 
-  filter.begin(25);
+  filter.begin(26);
 
   Serial.println("Calibration done!");
 
@@ -285,8 +304,12 @@ void loop()
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
   //Update the IMU with new data
-  filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
-
+  static unsigned long prevTime = millis();
+  if (millis() - prevTime >= 39){
+    prevTime = millis();
+    filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
+  }
+ 
   //If a device disconnects
   if (!isConnected && prevConnected){
     delay(500); // give the bluetooth stack the chance to get things ready
@@ -369,7 +392,12 @@ void loop()
 
       //Send data with orienation to all connected devices
       String tmp;
-      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll() + " Speed: " + speed;
+      tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";" + speed + ";0";
+      Vector<String> splitTmp;
+      splitTmp.setStorage(BLE_RSP_ARRAY);
+      splitString(tmp, &splitTmp, ';');
+      tmp.remove(tmp.length()-1);
+      tmp = tmp + checkSumCalc(&splitTmp);
       const char* tmp_c = tmp.c_str();
       pCharacteristic_DRV->setValue((uint8_t*)tmp_c, tmp.length());
       pCharacteristic_DRV->notify();
@@ -378,6 +406,4 @@ void loop()
       //too slow, not sending
     }
   }  
-  
-  delay(20);
 }
