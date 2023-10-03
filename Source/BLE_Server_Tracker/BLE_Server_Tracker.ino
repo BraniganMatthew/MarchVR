@@ -87,7 +87,31 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 };
 
 
+void measureLatency()
+{
 
+  // String tmp;
+  //     tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll() + " Speed: " + speed;
+  //     const char* tmp_c = tmp.c_str();
+  //     pCharacteristic->setValue((uint8_t*)tmp_c, tmp.length());
+
+  unsigned long start;
+  unsigned long end;
+  unsigned long total;
+  String tmp = "69";
+  const char* data = tmp.c_str();
+  pCharacteristic->setValue((uint8_t*)data, tmp.length());
+  start = millis();
+  pCharacteristic->notify();
+  while(1) {
+    String value = pCharacteristic->getValue().c_str();
+    if (value == "secret message received") break;
+  }
+  end = millis();
+  total = end - start;
+  Serial.print("Round trip latency between server and client in ms: ");
+  Serial.println(total);
+}
 
 void setup() 
 {
@@ -268,6 +292,6 @@ void loop()
       //too slow, not sending
     }
   }  
-  
+  //measureLatency();
   delay(35);
 }
