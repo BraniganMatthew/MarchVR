@@ -1,17 +1,41 @@
 # MarchVR
-## Completed Work
-- LSM6DS3TR accelerometer/gyrometer module sends data to Adafruit Feather V2 microcontroller through I2C
-- Bluetooth Classic connection established between microcontroller and PC via a Python script
-- Data is transmitted through the aforementioned Bluetooth connection and filtered by the Python script
-- Accelerometer and gyroscope data is then received and plotted using Python and the Matplotlib library
-![Screenshot (15)](https://github.com/BraniganMatthew/MarchVR/blob/main/MicrosoftTeams-image.png)
-![Screenshot (16)](https://github.com/BraniganMatthew/MarchVR/blob/main/Screenshot%20(959).png)
-![Screenshot (17)](https://github.com/BraniganMatthew/MarchVR/blob/main/Screenshot%20(966).png)
-![Screenshot (18)](https://github.com/BraniganMatthew/MarchVR/blob/main/Screenshot%20(968).png)
+## Completed Work 
+### Alpha Build
+For our Alpha Build iteration, we have focused on implementing a GUI application for MarchVR as well as switching from Bluetooth Classic to Bluetooth Low Energy (BLE). The GUI application, MarchVR Hub, is a simplistic UI that will allow a user to manage the connection and calibration of the trackers as well as monitor relevant information about battery level and movement data. Switching to BLE will allow us to conserve power of our trackers to lengthen the possible play time of each session of use. BLE also allows us to reduce the latency between a player's physical movement and movement in-game.
+
+### Prototype
+- LSM6DS3TR accelerometer/gyrometer module sends data to Adafruit ESP32 Feather V2 microcontroller through I2C over Stemma QT cable
+- Microcontroller receives and processes data recorded by the IMU
+- Implemented infinite impulse response (IIR) filter to smooth out accelerometer data and eliminate bouncing
+- Implemented calibration process to determine the orientation of the device on the user's leg
+- Implemented speed calculation based on the frequency of steps taken, which is then sent to the OpenVR driver
+- Established Bluetooth Classic communication between tracker and OpenVR driver
+- Implemented Bluetooth auto-reconnect feature
+
+### MarchVR Trackers
+![image](https://github.com/BraniganMatthew/MarchVR/assets/90282856/9e1a0119-6e87-4d9e-b693-4ab951a2555c)
+
+### MarchVR Hub GUI Application
+![uimk1](https://github.com/BraniganMatthew/MarchVR/assets/90282856/3b3854a8-590f-4829-b2a3-c561a4490fde)
+
+### Receiving Step Data
+![MicrosoftTeams-image](https://github.com/BraniganMatthew/MarchVR/assets/90282856/bb272718-bd48-44b6-84e8-8b7ea1de91ad)
+
+### Data received from the IMU:
+![Screenshot (18)](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/Screenshot%20(974).png)
 
 ## Project Architecture
-The LSM6DS3TR-C module sends the recorded XYZ accelerometer and gyrometer data to the ESP32 Feather V2 microcontroller using the I2C serial communication protocol and the LSM6DS3TR library provided by Adafruit. This connection is set up using the code found in the Examples folder. The microcontroller is then connected to through the Bluetooth Classic communication standard using an external Python script and the transmission of data is begun. This, as well as the functionality for the receiver was accomplished through the PyBluez library. 1000 points of this data is then plotted using the matplotlib Python library in order to verify the data being received.
+### Alpha Build
+As for the alpha build iteration, the main elements of MarchVR are two "trackers" running BLE, a python GUI, the OpenVR driver, and SteamVR. The "trackers" each consist of an Adafruit ESP32 Feather V2 and an LSM6DS3TR IMU to allow us to track and communicate player movement to a PC. These trackers use BLE in order to communicate with each other, the GUI, and the OpenVR driver. One tracker serves as a BLE client and the other serves as a BLE server. The BLE server tracker collects movement data from itself as well as the client tracker and communicates this to the OpenVR driver via BLE which then communicates it to SteamVR which will result in in-game movement. The server tracker also communicates with the Python GUI in order to establish connections, send movement data to the GUI, recalibrate if needed, and monitor battery life.
+
+### Prototype
+As for the prototype iteration, the main elements of our design are an Adafruit ESP32 Feather V2 with a 6-bit LSM6DS3TR accelerometer/gyroscope module connected via I2C through a Stemma QT cable. This makes up the tracker portion of our design, which records and processes the data received from the IMU to calculate the speed of movement needed by the OpenVR driver running on a PC. The calculated speed value is then sent from the microcontroller to the PC running the OpenVR driver via Bluetooth Classic/Winsock2 for final processing. Finally, we programmed additional functionality for speed control based on step frequency, as well as a reconnection feature for scenarios where the Bluetooth connection is temporarily lost between the tracker and PC.
+
+
 
 ## Known Bugs
-- The data currently being received via the Python script is fragmented, however data received by the microcontroller is not. This was verified by displaying data through the serial monitor in the Arduino IDE. This indicates that the root cause of this is most likely data fragmentation caused by wireless communication. The solution to this issue is currently being researched.
-- The OpenVR example "controller" currently only works on select games. Games tested include VRChat and Blade & Sorcery, with the controller only working on VRChat.
+- Latency issues, which we plan to fix by switching from Bluetooth Classic to Bluetooth Low Energy and making the step counter algorithm computationally faster
+- The OpenVR driver currently only works on select games. Games tested include VRChat, SCP Labrat, and Blade & Sorcery, with the controller only working on VRChat.
+
+## Prototype Demo:
+https://youtu.be/ZxvRZggzVb4
