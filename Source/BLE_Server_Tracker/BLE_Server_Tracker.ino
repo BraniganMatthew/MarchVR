@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 9/25/2023 */
+/* Modified on: 9/29/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -69,6 +69,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
       isConnected = true;
       BLEDevice::startAdvertising();
+      Serial.println("Device Connected!");
     };
 
     void onDisconnect(BLEServer* pServer) {
@@ -127,6 +128,41 @@ bool assertCheckSum(Vector<String>* input)
   }
 }
 
+//Calibrates Sensor on call
+void calibrateTracker()
+{
+
+
+  sensors_event_t accel, gyro, temp;
+  //Testing average calibration
+  Serial.println("Calibrating please wait...");
+  //Gets 100 samples of idling
+  for (unsigned int i = 0; i < 100; i++){
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+    accelAvg[0] += accel.acceleration.x;
+    accelAvg[1] += accel.acceleration.y;
+    accelAvg[2] += accel.acceleration.z;
+  }
+  unsigned int maxVal = 0;
+
+  //Determines what side is up and if the accelerometer is flipped or not
+  for (unsigned int i = 0; i < 3; i++){
+    accelAvg[i] /= 100.0f;
+    if (maxVal < abs(accelAvg[i])){
+      up = i;
+      maxVal = abs(accelAvg[i]);
+    }
+    if (accelAvg[i] < 0)
+      accelPos[i] = -1;
+    else
+      accelPos[i] = 1;
+  }
+
+  filter.begin(26);
+
+  Serial.println("Calibration done!");
+}
+
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
       String value = pCharacteristic->getValue().c_str();
@@ -164,26 +200,47 @@ void bleResponse()
   //Check where it will be going to
   String dst = splitVal.at(2);
 
-  // Serial.printf("SRC %s DST %s\n", src.c_str(), dst.c_str());
+  //Check what command is calling
+  String cmd = splitVal.at(3);
 
   //If to server
   if (dst == "TK1"){
     if (src == "TK2"){
       trackerStep2 = true;
-    } else if (src.c_str() == "GUI") {
+    } else if (src == "GUI") {
+      if (cmd == "CAL"){
+        calibrateTracker();
+      }
 
-    } else if (src.c_str() == "DRV") {
+    } else if (src == "DRV") {
       
     }
   
   }
   
-
   //Else to tracker 1
+   else if (dst == "TK2"){
+    String tmp = BLE_Wrt_Rsp;
+    const char* tmp_c = tmp.c_str();
+    pCharacteristic_TRK->setValue((uint8_t*)tmp_c, tmp.length());
+    pCharacteristic_TRK->notify();
+  }
 
   //Else to GUI
+  else if (dst == "GUI"){
+    String tmp = BLE_Wrt_Rsp;
+    const char* tmp_c = tmp.c_str();
+    pCharacteristic_GUI->setValue((uint8_t*)tmp_c, tmp.length());
+    pCharacteristic_GUI->notify();
+  }
 
   //Else to Driver
+  else if (dst == "DRV"){
+    String tmp = BLE_Wrt_Rsp;
+    const char* tmp_c = tmp.c_str();
+    pCharacteristic_DRV->setValue((uint8_t*)tmp_c, tmp.length());
+    pCharacteristic_DRV->notify();
+  }
 }
 
 void setup() 
@@ -249,7 +306,7 @@ void setup()
   BLEDevice::startAdvertising();
   Serial.println("Waiting a client connection to notify...");
 
-  //Find IMU
+      //Find IMU
   if (!lsm6ds3trc.begin_I2C()) {
     Serial.println("Failed to find LSM6DS3TR-C chip. Please connect IMU to I2C connection.");
     while (1) {
@@ -267,34 +324,7 @@ void setup()
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
-  sensors_event_t accel, gyro, temp;
-  //Testing average calibration
-  Serial.println("Calibrating please wait...");
-  //Gets 100 samples of idling
-  for (unsigned int i = 0; i < 100; i++){
-    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-    accelAvg[0] += accel.acceleration.x;
-    accelAvg[1] += accel.acceleration.y;
-    accelAvg[2] += accel.acceleration.z;
-  }
-  unsigned int maxVal = 0;
-
-  //Determines what side is up and if the accelerometer is flipped or not
-  for (unsigned int i = 0; i < 3; i++){
-    accelAvg[i] /= 100.0f;
-    if (maxVal < abs(accelAvg[i])){
-      up = i;
-      maxVal = abs(accelAvg[i]);
-    }
-    if (accelAvg[i] < 0)
-      accelPos[i] = -1;
-    else
-      accelPos[i] = 1;
-  }
-
-  filter.begin(26);
-
-  Serial.println("Calibration done!");
+  calibrateTracker();
 
 }
 

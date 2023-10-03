@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 9/19/2023 */
+/* Modified on: 10/3/2023 */
 
 //#include "BluetoothSerial.h"
 
