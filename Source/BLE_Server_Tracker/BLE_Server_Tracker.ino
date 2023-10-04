@@ -349,8 +349,9 @@ void loop()
 
   //Update the IMU with new data
   static unsigned long prevTime = millis();
-  if (millis() - prevTime >= 39){
+  if (millis() - prevTime >= 20){
     prevTime = millis();
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
     filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
   }
  

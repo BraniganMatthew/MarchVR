@@ -326,7 +326,7 @@ void setup()
 void loop() 
 {
   //Waits until bluetooth is connected
-  if (doConnect == true) {
+  if (doConnect == true || connected == false) {
     if (connectToServer()) {
       Serial.println("We are now connected to the BLE Server.");
     } else {
@@ -339,7 +339,7 @@ void loop()
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
   static unsigned long prevReadingTime = millis();
 
-  if (millis() - prevReadingTime >= 39){
+  if (millis() - prevReadingTime >= 20){
     prevReadingTime = millis();
     filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
   }
