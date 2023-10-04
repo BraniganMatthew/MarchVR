@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 9/29/2023 */
+/* Modified on: 10/4/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -73,6 +73,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
     };
 
     void onDisconnect(BLEServer* pServer) {
+      Serial.println("Device Disconnected...");
       isConnected = false;
     }
 };
@@ -209,6 +210,19 @@ void bleResponse()
       trackerStep2 = true;
     } else if (src == "GUI") {
       if (cmd == "CAL"){
+        //Send data with orienation to all connected devices
+        splitVal.at(2) = "TK2";
+        String tmp = "%;";
+        for (uint8_t i = 1; i < splitVal.size()-1; i++){
+          tmp += splitVal.at(i).c_str();
+          tmp += ";";
+        }
+        //tmp += ";";
+        tmp = tmp + checkSumCalc(&splitVal);
+        const char* tmp_c = tmp.c_str();
+        Serial.println(tmp_c);
+        pCharacteristic_TRK->setValue((uint8_t*)tmp_c, tmp.length());
+        pCharacteristic_TRK->notify();
         calibrateTracker();
       }
 
@@ -218,8 +232,8 @@ void bleResponse()
   
   }
   
-  //Else to tracker 1
-   else if (dst == "TK2"){
+  //Else to tracker 2
+  else if (dst == "TK2"){
     String tmp = BLE_Wrt_Rsp;
     const char* tmp_c = tmp.c_str();
     pCharacteristic_TRK->setValue((uint8_t*)tmp_c, tmp.length());

@@ -38,9 +38,11 @@
   bool doConnect = false;
   bool connected = false;
   bool doScan = false;
+  bool newBLERsp = false;
   BLERemoteCharacteristic* pRemoteCharacteristic;
   BLEAdvertisedDevice* myDevice;
   String BLE_RSP_ARRAY[MAX_DATA_PARA];
+  String BLE_Wrt_Rsp;
 
   //Step Counter Variables
   int stepCount = 0;
@@ -63,6 +65,21 @@
 
 //Classes
 
+void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify){
+  String value = "";
+  for (uint8_t i = 0; i < length; i++){
+    value += (char)(pData[i]);
+  }
+  
+  if (value.length() > 0) {
+    BLE_Wrt_Rsp = "";
+    BLE_Wrt_Rsp += value.c_str();
+
+    newBLERsp = true;
+    //Serial.println(value);
+  }
+}
+
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
   }
@@ -72,6 +89,43 @@ class MyClientCallback : public BLEClientCallbacks {
     Serial.println("onDisconnect");
   }
 };
+
+//Calibrates Sensor on call
+void calibrateTracker()
+{
+
+
+  sensors_event_t accel, gyro, temp;
+  //Testing average calibration
+  Serial.println("Calibrating please wait...");
+  //Gets 100 samples of idling
+  for (unsigned int i = 0; i < 100; i++){
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+    accelAvg[0] += accel.acceleration.x;
+    accelAvg[1] += accel.acceleration.y;
+    accelAvg[2] += accel.acceleration.z;
+  }
+  unsigned int maxVal = 0;
+
+  //Determines what side is up and if the accelerometer is flipped or not
+  for (unsigned int i = 0; i < 3; i++){
+    accelAvg[i] /= 100.0f;
+    if (maxVal < abs(accelAvg[i])){
+      up = i;
+      maxVal = abs(accelAvg[i]);
+    }
+    if (accelAvg[i] < 0)
+      accelPos[i] = -1;
+    else
+      accelPos[i] = 1;
+  }
+
+  filter.begin(26);
+
+  Serial.println("Calibration done!");
+}
+
+
 
 uint8_t checkSumCalc(Vector<String>* input)
 {
@@ -85,6 +139,19 @@ uint8_t checkSumCalc(Vector<String>* input)
   return calcSum;
 }
 
+bool assertCheckSum(Vector<String>* input)
+{
+  uint8_t sum = input->at(input->size()-1).toInt();
+  uint8_t calcSum = checkSumCalc(input);
+  if (sum == calcSum){
+    //Serial.printf("They're equal!\n");
+    return true;
+  } else {
+    Serial.printf("Recieved Sum: %d is different from calculated sum: %d\n", sum, calcSum);
+    return false;
+  }
+}
+
 void splitString(String input, Vector<String>* output, char delim)
 {
   uint8_t count = 0;
@@ -92,11 +159,6 @@ void splitString(String input, Vector<String>* output, char delim)
   String tmp = "";
 
   for (uint8_t i = 0; i < input.length(); i++){
-    
-    // if (count >= MAX_DATA_PARA){
-    //   Serial.println("INPUT TOO LARGE. QUITTING");
-    //   break;
-    // }
     char tmpChar = input.charAt(i);
     if (tmpChar == delim){
       count++;
@@ -108,6 +170,47 @@ void splitString(String input, Vector<String>* output, char delim)
     if (i+1 == input.length()){
       output->push_back(tmp.c_str());
     }
+  }
+}
+
+void bleResponse()
+{
+  Vector<String> splitVal;
+  splitVal.setStorage(BLE_RSP_ARRAY);
+  splitString(BLE_Wrt_Rsp, &splitVal, ';');
+
+  // //Check if valid
+  if (splitVal.at(0) != "%"){
+    Serial.printf("Invalid Starting Byte: %s", splitVal.at(0).c_str());
+    return;
+  }
+  if (!assertCheckSum(&splitVal)){
+    Serial.printf("Failed Sum Check: %s", splitVal.at(splitVal.size()-1).c_str());
+    return;
+  }
+
+  //Check where it is coming from
+  String src = splitVal.at(1);
+
+  //Check where it will be going to
+  String dst = splitVal.at(2);
+
+  //Check what command is calling
+  String cmd = splitVal.at(3);
+
+  //If to server
+  if (dst == "TK2"){
+    if (src == "TK1"){
+      //To be added upon
+    } else if (src == "GUI") {
+      if (cmd == "CAL"){
+        calibrateTracker();
+      }
+
+    } else if (src == "DRV") {
+      
+    }
+  
   }
 }
 
@@ -152,6 +255,9 @@ bool connectToServer() {
       Serial.print("The characteristic value was: ");
       Serial.println(value.c_str());
     }
+
+    if(pRemoteCharacteristic->canNotify())
+      pRemoteCharacteristic->registerForNotify(notifyCallback);
 
     connected = true;
     return true;
@@ -214,36 +320,7 @@ void setup()
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
-  sensors_event_t accel, gyro, temp;
-  lsm6ds3trc.enablePedometer(false);
-  //Testing average calibration
-  Serial.println("Calibrating please wait...");
-  //Gets 100 samples of idling
-  for (unsigned int i = 0; i < 100; i++){
-    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-    accelAvg[0] += accel.acceleration.x;
-    accelAvg[1] += accel.acceleration.y;
-    accelAvg[2] += accel.acceleration.z;
-  }
-  unsigned int maxVal = 0;
-  //Determines what side is up and if the accelerometer is flipped or not
-  for (unsigned int i = 0; i < 3; i++){
-    accelAvg[i] /= 100.0f;
-    if (maxVal < abs(accelAvg[i])){
-      up = i;
-      maxVal = abs(accelAvg[i]);
-    }
-    if (accelAvg[i] < 0)
-      accelPos[i] = -1;
-    else
-      accelPos[i] = 1;
-  }
-
-  filter.begin(26);
-
-  Serial.println("Calibration done!");
-  
-
+  calibrateTracker();
 }
 
 void loop() 
@@ -267,32 +344,17 @@ void loop()
     filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
   }
 
+  if (newBLERsp){
+    bleResponse();
+    newBLERsp = false;
+  }
+
+
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
     startTime = millis();
     resetTime = false;
   }
-
-  // static uint16_t oldStepValue = 0;
-  // if (lsm6ds3trc.readPedometer() - oldStepValue > 0){
-  //   if (lsm6ds3trc.readPedometer() + 1 == 0){
-  //     lsm6ds3trc.resetPedometer();
-  //   }
-  //   oldStepValue = lsm6ds3trc.readPedometer();
-  //   String tmp;
-  //   tmp = tmp + "%;TK2;TK1;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";0";
-  //   Vector<String> splitTmp;
-  //   splitTmp.setStorage(BLE_RSP_ARRAY);
-  //   splitString(tmp, &splitTmp, ';');
-  //   for (uint8_t i  = 0; i < splitTmp.size(); i++){
-  //     Serial.println(splitTmp.at(i));
-  //   }
-  //   tmp.remove(tmp.length()-1);
-  //   tmp = tmp + checkSumCalc(&splitTmp);
-  //   Serial.println(tmp);
-  //   if (connected)
-  //     pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
-  // }
   
   //Applies IIR smoothing filter to acceleration
   float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
