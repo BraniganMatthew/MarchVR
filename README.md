@@ -22,6 +22,7 @@ As in the Alpha build iteration, the main elements of the Beta build for MarchVR
 ## Known Bugs
 - The PyQT GUI and OpenVR driver cannot be run concurrently on the same device due to sharing the same Bluetooth hardware. Fixes include using the UI to calibrate the trackers prior to launching a game or using one device for the GUI and one device for running VR games on, neither of which are ideal. Thus, it has been determined that the best course of action would be the creation of a socket server to integrate both BLE clients into one and handle all incoming/outgoing BLE traffic to the user's PC for MarchVR.
 - The yaw data received from the IMU has been determined to be unstable due to the lack of a magnetometer. This is a necessary component due to needing the user's heading for the expansion of walking capabilities, so an additional magnetometer module will be acquired as soon as possible.
+- The Bleak Python library that is used for BLE communication occasionally causes errors, especially when attempting to calibrate while the tracker is currently transmitting that a step has occurred. A "GATT Services Unreachable" error occasionally occurs when attempting to connect on certain Windows 10 machines.
 
 ## Beta Build Demo:
 (insert link here)
