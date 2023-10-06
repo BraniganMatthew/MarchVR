@@ -11,7 +11,8 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <Adafruit_LSM6DS3TRC.h>
-#include <MadgwickAHRS.h>
+//#include <MadgwickAHRS.h>
+#include <Adafruit_AHRS.h>
 #include <Vector.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
@@ -62,7 +63,8 @@
 
   //IMU Oridentation Filtering
   Adafruit_LSM6DS3TRC lsm6ds3trc;
-  Madgwick filter;
+  //Madgwick filter;
+  Adafruit_Mahony filter;
 
 //Classes
 class MyServerCallbacks: public BLEServerCallbacks {
@@ -133,6 +135,16 @@ bool assertCheckSum(Vector<String>* input)
 void calibrateTracker()
 {
 
+  lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
+  lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
+
+  filter.begin(26);
+
+  lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
+  lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
+
+  lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
+  lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
   sensors_event_t accel, gyro, temp;
   //Testing average calibration
@@ -158,8 +170,6 @@ void calibrateTracker()
     else
       accelPos[i] = 1;
   }
-
-  filter.begin(26);
 
   Serial.println("Calibration done!");
 }
@@ -330,22 +340,14 @@ void setup()
 
   Serial.println("LSM6DS3TR-C Found!");
 
-  lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
-  lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
-  lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
-  lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
-
-  lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
-  lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
-
   calibrateTracker();
 
 }
 
 void loop() 
 {
-  sensors_event_t accel, gyro, temp;
-  lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+  static sensors_event_t accel, gyro, temp;
+  //lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
   //Update the IMU with new data
   static unsigned long prevTime = millis();
@@ -353,6 +355,7 @@ void loop()
     prevTime = millis();
     lsm6ds3trc.getEvent(&accel, &gyro, &temp);
     filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
+    Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
   }
  
   //If a device disconnects
@@ -447,6 +450,7 @@ void loop()
       pCharacteristic_DRV->setValue((uint8_t*)tmp_c, tmp.length());
       pCharacteristic_DRV->notify();
       Serial.println(tmp);
+      //Serial.printf("Yaw: %f Pitch: %f Roll: %f", filter.getYaw(), filter.getPitch(), filter.getRoll());
     } else {
       //too slow, not sending
     }
