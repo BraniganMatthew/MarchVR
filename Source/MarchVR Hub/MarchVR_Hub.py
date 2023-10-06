@@ -11,6 +11,7 @@ from bleak import BleakClient, BleakScanner
 calibrateFlag = False
 connectFlag = False
 disconnectFlag = True
+errorFlag = False
 
 serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 characteristicUUID = "aad41096-f795-4b3b-83bb-858051e5e284"
@@ -38,7 +39,15 @@ sum = 0
 
 async def main(): # This function loops for the duration the UI is open and handles BLE communication
     while (True):
-        if (connectFlag):
+        if (errorFlag):
+            t1error.show()
+            t2error.show()
+            t1con.hide()
+            t2con.hide()
+            t1discon.hide()
+            t2discon.hide()
+            continue
+        elif (connectFlag):
             scanner = BleakScanner(service_uuids=serviceUUID, winrt=dict(use_cached_services=False))
             server = await scanner.find_device_by_name("ESP32")
             if (server == None): 
@@ -50,7 +59,12 @@ async def main(): # This function loops for the duration the UI is open and hand
                 t1discon.hide()
                 t2discon.hide()
             async with BleakClient(server) as client:
-                await client.start_notify(characteristicUUID, notification_handler)
+                try:
+                    await client.start_notify(characteristicUUID, notification_handler)
+                except:
+                    global errorFlag
+                    errorFlag = True
+                    continue
                 while(True):
                     global calibrateFlag
                     if (calibrateFlag and connectFlag):
@@ -221,6 +235,13 @@ class Window(QMainWindow): # This is our actual window for the UI
         t1discon.setGeometry(t1x + 70, t1y, 200, 50)
         t1discon.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
 
+        # not connected text
+        global t1error
+        t1error = QLabel("ERROR", self)
+        t1error.setGeometry(t2x + 70, t2y, 200, 50)
+        t1error.setStyleSheet("QLabel{font-size: 12pt; color: red}")
+        t1error.hide()
+
         # battery info
         battery1 = -1
         t1bat = QLabel("Battery Life: 100%", self)
@@ -247,6 +268,13 @@ class Window(QMainWindow): # This is our actual window for the UI
         t2discon.setGeometry(t2x + 70, t2y, 200, 50)
         t2discon.setStyleSheet("QLabel{font-size: 12pt; color: red}")
         t2discon.hide()
+
+        # not connected text
+        global t2error
+        t2error = QLabel("ERROR", self)
+        t2error.setGeometry(t2x + 70, t2y, 200, 50)
+        t2error.setStyleSheet("QLabel{font-size: 12pt; color: red}")
+        t2error.hide()
 
         # battery info
         battery2 = -1
