@@ -1,16 +1,7 @@
 # MarchVR
 ## Completed Work 
-### Alpha Build
-For our Alpha Build iteration, we have focused on implementing a GUI application for MarchVR as well as switching from Bluetooth Classic to Bluetooth Low Energy (BLE). The GUI application, MarchVR Hub, is a simplistic UI that will allow a user to manage the connection and calibration of the trackers as well as monitor relevant information about battery level and movement data. Switching to BLE will allow us to conserve power of our trackers to lengthen the possible play time of each session of use. BLE also allows us to reduce the latency between a player's physical movement and movement in-game.
-
-### Prototype
-- LSM6DS3TR accelerometer/gyrometer module sends data to Adafruit ESP32 Feather V2 microcontroller through I2C over Stemma QT cable
-- Microcontroller receives and processes data recorded by the IMU
-- Implemented infinite impulse response (IIR) filter to smooth out accelerometer data and eliminate bouncing
-- Implemented calibration process to determine the orientation of the device on the user's leg
-- Implemented speed calculation based on the frequency of steps taken, which is then sent to the OpenVR driver
-- Established Bluetooth Classic communication between tracker and OpenVR driver
-- Implemented Bluetooth auto-reconnect feature
+### Beta Build
+After switching from Bluetooth Classic to Bluetooth Low Energy (BLE) in the Alpha build, the Beta build has largely focused on expanding the functionality of the project, moving on from the "vertical slice" of the Alpha. The GUI application, MarchVR Hub, has a simplistic UI that allows a user to easily manage the connection and calibration of the trackers. The OpenVR driver now features less latency than ever before after switching to BLE. Through the alpha test plan, however, it was discovered that the MarchVR Hub and OpenVR driver cannot be connected at the same time on the same device, due to both functioning as BLE clients and utilizing the same Bluetooth hardware. Thus, it has been determined that the two must be integrated in the form of a socket server such that only one BLE client is active on a user's PC at any given time.
 
 ### MarchVR Trackers
 ![image](https://github.com/BraniganMatthew/MarchVR/assets/90282856/9e1a0119-6e87-4d9e-b693-4ab951a2555c)
@@ -25,17 +16,11 @@ For our Alpha Build iteration, we have focused on implementing a GUI application
 ![Screenshot (18)](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/Screenshot%20(974).png)
 
 ## Project Architecture
-### Alpha Build
-As for the alpha build iteration, the main elements of MarchVR are two "trackers" running BLE, a python GUI, the OpenVR driver, and SteamVR. The "trackers" each consist of an Adafruit ESP32 Feather V2 and an LSM6DS3TR IMU to allow us to track and communicate player movement to a PC. These trackers use BLE in order to communicate with each other, the GUI, and the OpenVR driver. One tracker serves as a BLE client and the other serves as a BLE server. The BLE server tracker collects movement data from itself as well as the client tracker and communicates this to the OpenVR driver via BLE which then communicates it to SteamVR which will result in in-game movement. The server tracker also communicates with the Python GUI in order to establish connections, send movement data to the GUI, recalibrate if needed, and monitor battery life.
-
-### Prototype
-As for the prototype iteration, the main elements of our design are an Adafruit ESP32 Feather V2 with a 6-bit LSM6DS3TR accelerometer/gyroscope module connected via I2C through a Stemma QT cable. This makes up the tracker portion of our design, which records and processes the data received from the IMU to calculate the speed of movement needed by the OpenVR driver running on a PC. The calculated speed value is then sent from the microcontroller to the PC running the OpenVR driver via Bluetooth Classic/Winsock2 for final processing. Finally, we programmed additional functionality for speed control based on step frequency, as well as a reconnection feature for scenarios where the Bluetooth connection is temporarily lost between the tracker and PC.
-
-
+### Beta Build
+As in the Alpha build iteration, the main elements of the Beta build for MarchVR are two "trackers", a PyQT GUI, and the OpenVR driver. The "trackers" each consist of an Adafruit ESP32 Feather V2 and an LSM6DS3TR IMU, allowing us to track and communicate player movement to a PC. These trackers utilize BLE in order to communicate with each other and a user's PC, which runs the OpenVR driver and PyQT GUI. One tracker serves as a BLE client while the other serves as a BLE server, splitting up tasks between them and allowing for data to be sent to the driver without any desynchronization. The server tracker communicates both the movement data for itself as well as the client tracker to the OpenVR driver, which then uses APIs to result in in-game movement. The server tracker also communicates with the PyQT GUI in order to receive a recalibration command if needed and monitor the status of the trackers.
 
 ## Known Bugs
-- Latency issues, which we plan to fix by switching from Bluetooth Classic to Bluetooth Low Energy and making the step counter algorithm computationally faster
-- The OpenVR driver currently only works on select games. Games tested include VRChat, SCP Labrat, and Blade & Sorcery, with the controller only working on VRChat.
+-The PyQT GUI and OpenVR driver cannot be run concurrently on the same device due to sharing the same Bluetooth hardware. Fixes include using the UI to calibrate the trackers prior to launching a game or using one device for the GUI and one device for running VR games on, neither of which are ideal. Thus, it has been determined that the best course of action would be the creation of a socket server to integrate both BLE clients into one and handle all incoming/outgoing BLE traffic to the user's PC for MarchVR.
 
-## Prototype Demo:
-https://youtu.be/ZxvRZggzVb4
+## Beta Build Demo:
+(insert link here)
