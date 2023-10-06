@@ -208,6 +208,7 @@ void bleResponse()
   String cmd = splitVal.at(3);
 
   //If to client
+  Serial.println(BLE_Wrt_Rsp);
   if (dst == "TK2"){
     if (src == "TK1"){
       //To be added upon
@@ -276,9 +277,10 @@ bool connectToServer() {
 }
 
 void enterSleep(){
+  Serial.println("Client going to sleep");
   onePixel.setPixelColor(0, 0, 0, 0);//turn NeoPixel off
   onePixel.show();//update pixel
-  esp_light_sleep_start();//enter sleep
+  esp_deep_sleep_start();//enter sleep
 }
 
 /**
