@@ -26,13 +26,13 @@ As in the Alpha build iteration, the main elements of the Beta build for MarchVR
 - Error checking for the MarchVR Hub has been implemented
 - Alpha test plan has discovered that the battery life for each tracker is about 10 hours
 - Alpha test plan has determined that running two BLE clients on one device is unfeasible
-- Alpha test plan has determined that a magnetometer is required for determining the user’s heading due to gyroscope reading instability
+- Alpha test plan has determined that a magnetometer is required for determining the user’s orientation due to gyroscope reading instability
 - Alpha test plan has discovered that the latency has been reduced compared to using Bluetooth Classic, which was the goal of the swap to Bluetooth Low Energy in the Alpha build
 
 
 ## Known Bugs
 - The PyQT GUI and OpenVR driver cannot be run concurrently on the same device due to sharing the same Bluetooth hardware. Fixes include using the UI to calibrate the trackers prior to launching a game or using one device for the GUI and one device for running VR games on, neither of which are ideal. Thus, it has been determined that the best course of action would be the creation of a socket server to integrate both BLE clients into one and handle all incoming/outgoing BLE traffic to the user's PC for MarchVR.
-- The yaw data received from the IMU has been determined to be unstable due to the lack of a magnetometer. This is a necessary component due to needing the user's heading for the expansion of walking capabilities, so an additional magnetometer module will be acquired as soon as possible.
+- The yaw data received from the IMU has been determined to be unstable due to the lack of a magnetometer. This is a necessary component due to needing the user's orientation for the expansion of walking capabilities, so an additional magnetometer module will be acquired as soon as possible.
 - The Bleak Python library that is used for BLE communication occasionally causes errors, especially when attempting to calibrate while the tracker is currently transmitting that a step has occurred. A "GATT Services Unreachable" error occasionally occurs when attempting to connect on certain Windows 10 machines.
 - The ESP32's effective range for BLE communication is only about one meter. Beyond this distance, communication may be unstable. This is suitable for communication between the server and client trackers, but not ideal for communication with the user's PC.
 
