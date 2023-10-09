@@ -9,6 +9,9 @@ import asyncio
 from bleak import BleakClient, BleakScanner
 
 calibrateFlag = False
+connectFlag = False
+disconnectFlag = True
+errorFlag = False
 
 serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 characteristicUUID = "aad41096-f795-4b3b-83bb-858051e5e284"
@@ -19,14 +22,13 @@ def listToString(inputList): # Helps turn a byte stream into a string of charact
         outputString += chr(i)
     return outputString
 
-statusString = ""
+movementString = ""
 def notification_handler(sender, data): # Called when we are notified by a tracker via BLE
-            global statusString
-            statusString = listToString(list(data))
-            print(statusString)
+            global movementString
+            movementString = listToString(list(data))
 
-winWidth = 960
-winHeight = 540
+winWidth = 250
+winHeight = 400
 winX = 280
 winY = 160
 green = QColor(0, 200, 20)
@@ -35,26 +37,54 @@ updateTime = 1000 # in milliseconds - update our UI once every "updateTime" ms
 sum = 0
 
 async def main(): # This function loops for the duration the UI is open and handles BLE communication
-
-    scanner = BleakScanner(service_uuids=serviceUUID, winrt=dict(use_cached_services=False))
-    server = await scanner.find_device_by_name("ESP32")
-    async with BleakClient(server) as client:
-        print("Printing services: ")
-        services = client.services
-        for s in services:
-            print(s)
-
-        print("UI is now ready")
-        await client.start_notify(characteristicUUID, notification_handler)
-        while(True):
-            global calibrateFlag
-            if (calibrateFlag):
-                print("Calibrating")
-                calibrateFlag = 0
-                calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
-                calibrationCommand = calibrationCommand.encode('utf-8')
-                await client.write_gatt_char(characteristicUUID, bytearray(calibrationCommand), response=True)
-            await asyncio.sleep(1)
+    while (True):
+        global errorFlag
+        if (errorFlag):
+            t1error.show()
+            t2error.show()
+            t1con.hide()
+            t2con.hide()
+            t1discon.hide()
+            t2discon.hide()
+            continue
+        elif (connectFlag):
+            scanner = BleakScanner(service_uuids=serviceUUID, winrt=dict(use_cached_services=False))
+            server = await scanner.find_device_by_name("ESP32")
+            if (server == None): 
+                await asyncio.sleep(10)
+                continue
+            else:
+                t1con.show()
+                t2con.show()
+                t1discon.hide()
+                t2discon.hide()
+            try:
+                async with BleakClient(server) as client:
+                    await client.start_notify(characteristicUUID, notification_handler)
+                    while(True):
+                        global calibrateFlag
+                        if (calibrateFlag and connectFlag):
+                            print("Calibrating")
+                            calibrateFlag = 0
+                            calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
+                            calibrationCommand = calibrationCommand.encode('utf-8')
+                            await client.write_gatt_char(characteristicUUID, bytearray(calibrationCommand), response=True)
+                        elif (calibrateFlag and disconnectFlag):
+                            print("Error: Calibrate command sent while disconnected")
+                        elif (disconnectFlag):
+                            print("Disconnected")
+                            if (server != None):
+                                await client.disconnect()
+                            break
+                        await asyncio.sleep(1)
+            except:
+                    errorFlag = True
+                    continue
+        else:
+            t1con.hide()
+            t2con.hide()
+            t1discon.show()
+            t2discon.show()
 
 
 class Worker(QtCore.QObject): # This class and its function help set up/enable threading
@@ -86,7 +116,6 @@ class Canvas(FigureCanvas): # A class for our charts
 class Window(QMainWindow): # This is our actual window for the UI
 
     def runner(self): # Setting up and starting up the thread
-
         self.thread = QtCore.QThread()
         self.worker = Worker()
         self.worker.moveToThread(self.thread)
@@ -96,11 +125,10 @@ class Window(QMainWindow): # This is our actual window for the UI
 
 
     def __init__(self): # The window's init function, handles several start up tasks
-
         super().__init__()
   
         # setting title
-        self.setWindowTitle("March VR Hub")
+        self.setWindowTitle("MarchVR Hub")
   
         # setting geometry
         self.setGeometry(winX, winY, winWidth, winHeight)
@@ -125,7 +153,6 @@ class Window(QMainWindow): # This is our actual window for the UI
                 global sum
                 sum = sum ^ ord(x[i])
 
-  
     def UiComponents(self): # This function creates every UI component within the window
 
         ### ----------------------------------- UI COMPONENTS ---------------------------------------- ###
@@ -147,6 +174,22 @@ class Window(QMainWindow): # This is our actual window for the UI
         # adding action to a button
         calButton.clicked.connect(self.clickCal)
 
+        # DISCONNECT BUTTON ---------------------------------------------------------------------------------
+
+        disconButton = QPushButton("Disconnect", self)
+
+        disconButtonWidth = 100
+        disconButtonHeight = 40
+        disconButtonX = 125
+        disconButtonY = 150
+  
+        # setting geometry of button
+        disconButton.setGeometry(disconButtonX, disconButtonY, disconButtonWidth, disconButtonHeight)
+        disconButton.setStyleSheet("QPushButton{font-size: 12pt;}")
+  
+        # adding action to a button
+        disconButton.clicked.connect(self.clickDiscon)
+
         # CONNECT BUTTON ---------------------------------------------------------------------------------
 
         conButton = QPushButton("Connect", self)
@@ -164,12 +207,20 @@ class Window(QMainWindow): # This is our actual window for the UI
         conButton.clicked.connect(self.clickCon)
 
         # MAIN TEXT -------------------------------------------------------------------------------------
-        mainX = winWidth/2 - 80
+        mainX = winWidth/2 - 100
         mainY = 0
-        mainText = QLabel("March VR Hub", self)
+        mainText = QLabel("MarchVR Hub", self)
         mainText.setGeometry(mainX, mainY, 200, 50)
         mainText.setStyleSheet("QLabel{font-size: 18pt;}")
         mainText.setAlignment(QtCore.Qt.AlignCenter)
+
+        # WARNING TEXT -------------------------------------------------------------------------------------
+        warningX = 0
+        warningY = 35
+        warningText = QLabel("Stand still while calibrating.\nIf an error occurs, please restart MarchVR Hub.", self)
+        warningText.setGeometry(warningX, warningY, 250, 50)
+        warningText.setStyleSheet("QLabel{font-size: 8pt;}")
+        warningText.setAlignment(QtCore.Qt.AlignCenter)
 
         # TRACKER 1 INFO --------------------------------------------------------------------------------
         t1x = 25
@@ -179,78 +230,114 @@ class Window(QMainWindow): # This is our actual window for the UI
         t1.setStyleSheet("QLabel{font-size: 12pt;}")
 
         # connected text
+        global t1con
         t1con = QLabel("Connected", self)
         t1con.setGeometry(t1x + 70, t1y, 200, 50)
         t1con.setStyleSheet("QLabel{font-size: 12pt; color: green}")
+        t1con.hide()
 
         # not connected text
         global t1discon
-        t1discon = QLabel("Disonnected", self)
+        t1discon = QLabel("Disconnected", self)
         t1discon.setGeometry(t1x + 70, t1y, 200, 50)
         t1discon.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
-        t1discon.hide()
 
-        # battery info
-        battery1 = -1
-        t1bat = QLabel("Battery Life: 100%", self)
-        t1bat.setGeometry(t1x, t1y + 30, 200, 50)
-        t1bat.setStyleSheet("QLabel{font-size: 12pt; color: black;}")
+        # not connected text
+        global t1error
+        t1error = QLabel("ERROR", self)
+        t1error.setGeometry(t1x + 70, t1y, 200, 50)
+        t1error.setStyleSheet("QLabel{font-size: 12pt; color: red}")
+        t1error.hide()
 
         # TRACKER 2 INFO  -------------------------------------------------------------------------------
         t2x = 25
-        t2y = 275
+        t2y = 225
         t2 = QLabel("Tracker 2: ", self)
         t2.setGeometry(t2x, t2y, 200, 50)
         t2.setStyleSheet("QLabel{font-size: 12pt;}")
 
         # connected text
+        global t2con
         t2con = QLabel("Connected", self)
         t2con.setGeometry(t2x + 70, t2y, 200, 50)
         t2con.setStyleSheet("QLabel{font-size: 12pt; color: green}")
+        t2con.hide()
 
         # not connected text
-        t2discon = QLabel("Disonnected", self)
+        global t2discon
+        t2discon = QLabel("Disconnected", self)
         t2discon.setGeometry(t2x + 70, t2y, 200, 50)
         t2discon.setStyleSheet("QLabel{font-size: 12pt; color: red}")
         t2discon.hide()
 
-        # battery info
-        battery2 = -1
-        t2bat = QLabel("Battery Life: 100%", self)
-        t2bat.setGeometry(t2x, t2y + 30, 200, 50)
-        t2bat.setStyleSheet("QLabel{font-size: 12pt; color: black;}")
+        # not connected text
+        global t2error
+        t2error = QLabel("ERROR", self)
+        t2error.setGeometry(t2x + 70, t2y, 200, 50)
+        t2error.setStyleSheet("QLabel{font-size: 12pt; color: red}")
+        t2error.hide()
 
-        # STATUS UPDATES  -------------------------------------------------------------------------------
-        global statusLabel
-        global statusString
-        statusString = ""
-        statusLabel = QLabel(statusString, self)
-        statusLabel.setGeometry(t2x, t2y, 400, 150)
-        statusLabel.setStyleSheet("QLabel{font-size: 12pt; color: black}")
+        # MOVEMENT DATA  -------------------------------------------------------------------------------
+        global movementLabel
+        global movementString
+        movementString = ""
+        movementLabel = QLabel("Movement Data", self)
+        movementLabel.setGeometry(t2x, t2y - 40, 200, 200)
+        movementLabel.setStyleSheet("QLabel{font-size: 12pt; color: black}")
+        movementLabel.setAlignment(QtCore.Qt.AlignCenter)
 
-        # CHARTS  ---------------------------------------------------------------------------------------
-        chart1a = Canvas(self, "Tracker 1 Accelerometer", 400, 50, 200, 200)
-        chart2a = Canvas(self, "Tracker 2 Accelerometer", 650, 50, 200, 200)
-        chart1g = Canvas(self, "Tracker 1 Gyroscope", 400, 300, 200, 200)
-        chart2g = Canvas(self, "Tracker 2 Gyroscope", 650, 300, 200, 200)
-        # -----------------------------------------------------------------------------------------------
+        # Yaw  -------------------------------------------------------------------------------
+        global yawLabel
+        yawLabel = QLabel("Yaw: ", self)
+        yawLabel.setGeometry(t2x, t2y - 20, 200, 200)
+        yawLabel.setStyleSheet("QLabel{font-size: 12pt; color: black}")
 
+        # Pitch  -------------------------------------------------------------------------------
+        global pitchLabel
+        pitchLabel = QLabel("Pitch: ", self)
+        pitchLabel.setGeometry(t2x, t2y, 200, 200)
+        pitchLabel.setStyleSheet("QLabel{font-size: 12pt; color: black}")
+
+        # Roll  -------------------------------------------------------------------------------
+        global rollLabel
+        rollLabel = QLabel("Roll: ", self)
+        rollLabel.setGeometry(t2x, t2y + 20, 200, 200)
+        rollLabel.setStyleSheet("QLabel{font-size: 12pt; color: black}")
+
+        # Speed  -------------------------------------------------------------------------------
+        global speedLabel
+        speedLabel = QLabel("Speed: ", self)
+        speedLabel.setGeometry(t2x, t2y + 40, 200, 200)
+        speedLabel.setStyleSheet("QLabel{font-size: 12pt; color: black}")
 
     def update(self): # Called once every "updateTime" ms to update the UI
-        global statusString
-        statusLabel.setText(statusString)  
-    
+        global movementString
+        movementList = movementString.split(";")
+        if (len(movementList) >= 4):
+            if (movementList[3] == "MOT"):
+                yawLabel.setText("Yaw: " + movementList[5])
+                pitchLabel.setText("Pitch: " + movementList[6])
+                rollLabel.setText("Roll: "  + movementList[7])
+                speedLabel.setText("Speed: "  + movementList[8])
 
     def clickCal(self): # Called when the calibration button is clicked
         print("Recalibrate clicked")
         global calibrateFlag
         calibrateFlag = True
 
-
-
     def clickCon(self): # Called when the connect button is clicked
-        print("Connect clicked")   
-  
+        print("Connect clicked")
+        global connectFlag
+        connectFlag = True
+        global disconnectFlag
+        disconnectFlag = False
+
+    def clickDiscon(self): # Called when the connect button is clicked
+        print("Disconnect clicked")
+        global connectFlag
+        connectFlag = False
+        global disconnectFlag
+        disconnectFlag = True
 
 # create pyqt5 app
 App = QApplication(sys.argv)
