@@ -1,0 +1,21 @@
+BLE Data Format
+"{SRT};{SRC};{DST};{CMD};{NUM_PAR};{PAR1};{PAR2};{PARN};{SUM}"
+
+Starting Byte{SRT}:
+0x25 = 37 = %
+
+Potential Sources{SRC}/Destinations{DST}:
+TK1 - Tracker BLE Server
+TK2 - Tracker BLE Client
+GUI - Computer UI
+DRV - OpenVR Driver
+
+Commands{CMD}:
+CAL - Calibrate Ex: "%;GUI;TK1;CLE;0;{SUM}"
+MOT - Orientation & Speed Data Ex: "%;TK1;DRV;MOT;4;YAW;PITCH;ROLL;SPEED;{SUM}"
+BAT - Battery Data Ex: "%;TK2;GUI;BAT;2;VOLT;PERCENT;{SUM}"
+PWR - Power Saving Switch Ex: "%;GUI;TK1;PWR;1;ON/OFF;{SUM}"
+CNT - Connection Status Ex: "%;GUI;TK1;CNT;0;{SUM}"
+
+Checksum{SUM}:
+XOR all data execpt for starting byte into 1 byte.
