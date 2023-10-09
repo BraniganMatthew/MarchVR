@@ -14,7 +14,7 @@ disconnectFlag = True
 errorFlag = False
 
 serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-characteristicUUID = "aad41096-f795-4b3b-83bb-858051e5e284"
+characteristicUUID = "22d7a034-791d-49f6-a84e-ef78ab2473ad"
 
 def listToString(inputList): # Helps turn a byte stream into a string of characters
     outputString = ""
@@ -77,12 +77,15 @@ async def main(): # This function loops for the duration the UI is open and hand
                                 await client.disconnect()
                             break
                         await asyncio.sleep(1)
-            except:
-                    errorFlag = True
-                    continue
+            except Exception as ex:
+                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print(message)
+                errorFlag = True
+                continue
         else:
-            t1con.hide()
-            t2con.hide()
+            t1disconnecting.hide()
+            t2disconnecting.hide()
             t1discon.show()
             t2discon.show()
 
@@ -243,6 +246,13 @@ class Window(QMainWindow): # This is our actual window for the UI
         t1discon.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
 
         # not connected text
+        global t1disconnecting
+        t1disconnecting = QLabel("Disconnecting...", self)
+        t1disconnecting.setGeometry(t1x + 70, t1y, 200, 50)
+        t1disconnecting.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
+        t1disconnecting.hide()
+
+        # error text
         global t1error
         t1error = QLabel("ERROR", self)
         t1error.setGeometry(t1x + 70, t1y, 200, 50)
@@ -270,7 +280,14 @@ class Window(QMainWindow): # This is our actual window for the UI
         t2discon.setStyleSheet("QLabel{font-size: 12pt; color: red}")
         t2discon.hide()
 
-        # not connected text
+         # not connected text
+        global t2disconnecting
+        t2disconnecting = QLabel("Disconnecting...", self)
+        t2disconnecting.setGeometry(t2x + 70, t2y, 200, 50)
+        t2disconnecting.setStyleSheet("QLabel{font-size: 12pt; color: red}")
+        t2disconnecting.hide()
+
+        # error text
         global t2error
         t2error = QLabel("ERROR", self)
         t2error.setGeometry(t2x + 70, t2y, 200, 50)
@@ -338,6 +355,10 @@ class Window(QMainWindow): # This is our actual window for the UI
         connectFlag = False
         global disconnectFlag
         disconnectFlag = True
+        t1con.hide()
+        t2con.hide()
+        t1disconnecting.show()
+        t2disconnecting.show()
 
 # create pyqt5 app
 App = QApplication(sys.argv)
