@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 9/4/2023 */
+/* Modified on: 10/3/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -12,6 +12,8 @@
 #include <BLE2902.h>
 #include <Adafruit_LSM6DS3TRC.h>
 #include <MadgwickAHRS.h>
+#include <Vector.h>
+#include <Adafruit_NeoPixel.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -25,6 +27,7 @@
 
 //VALUE DEFINES
 #define SMOOTHING_ALPHA 0.3f
+#define MAX_DATA_PARA   20
 
 // Global Variables
 
@@ -36,8 +39,11 @@
   bool doConnect = false;
   bool connected = false;
   bool doScan = false;
+  bool newBLERsp = false;
   BLERemoteCharacteristic* pRemoteCharacteristic;
   BLEAdvertisedDevice* myDevice;
+  String BLE_RSP_ARRAY[MAX_DATA_PARA];
+  String BLE_Wrt_Rsp;
 
   //Step Counter Variables
   int stepCount = 0;
@@ -58,7 +64,30 @@
   Adafruit_LSM6DS3TRC lsm6ds3trc;
   Madgwick filter;
 
+  //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
+  Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
+
+  int loopDelay = 35; //milliseconds we delay at end of each loop
+
+  int wakePeriod = 30 * 60000; // the number of milliseconds we want to wait before entering sleep mode
+  int timeLeftToLive = wakePeriod; // variable we will manipulate to actually track it
+
 //Classes
+
+void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify){
+  String value = "";
+  for (uint8_t i = 0; i < length; i++){
+    value += (char)(pData[i]);
+  }
+  
+  if (value.length() > 0) {
+    BLE_Wrt_Rsp = "";
+    BLE_Wrt_Rsp += value.c_str();
+
+    newBLERsp = true;
+    //Serial.println(value);
+  }
+}
 
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
@@ -66,9 +95,141 @@ class MyClientCallback : public BLEClientCallbacks {
 
   void onDisconnect(BLEClient* pclient) {
     connected = false;
+
+    onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is disconnected
+    onePixel.show();
+
     Serial.println("onDisconnect");
   }
 };
+
+//Calibrates Sensor on call
+void calibrateTracker()
+{
+
+
+  sensors_event_t accel, gyro, temp;
+  //Testing average calibration
+  Serial.println("Calibrating please wait...");
+  //Gets 100 samples of idling
+  for (unsigned int i = 0; i < 100; i++){
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+    accelAvg[0] += accel.acceleration.x;
+    accelAvg[1] += accel.acceleration.y;
+    accelAvg[2] += accel.acceleration.z;
+  }
+  unsigned int maxVal = 0;
+
+  //Determines what side is up and if the accelerometer is flipped or not
+  for (unsigned int i = 0; i < 3; i++){
+    accelAvg[i] /= 100.0f;
+    if (maxVal < abs(accelAvg[i])){
+      up = i;
+      maxVal = abs(accelAvg[i]);
+    }
+    if (accelAvg[i] < 0)
+      accelPos[i] = -1;
+    else
+      accelPos[i] = 1;
+  }
+
+  filter.begin(26);
+
+  Serial.println("Calibration done!");
+}
+
+
+
+uint8_t checkSumCalc(Vector<String>* input)
+{
+  uint8_t calcSum = 0;
+  //Will XOR everything, execpt for the start and end byte
+  for (uint8_t i = 1; i < input->size()-1; i++){
+    for (uint8_t j = 0; j < input->at(i).length(); j++){
+      calcSum = calcSum ^ (uint8_t)input->at(i).charAt(j);
+    }
+  }
+  return calcSum;
+}
+
+bool assertCheckSum(Vector<String>* input)
+{
+  uint8_t sum = input->at(input->size()-1).toInt();
+  uint8_t calcSum = checkSumCalc(input);
+  if (sum == calcSum){
+    //Serial.printf("They're equal!\n");
+    return true;
+  } else {
+    Serial.printf("Recieved Sum: %d is different from calculated sum: %d\n", sum, calcSum);
+    return false;
+  }
+}
+
+void splitString(String input, Vector<String>* output, char delim)
+{
+  uint8_t count = 0;
+  //Vector<String> output;
+  String tmp = "";
+
+  for (uint8_t i = 0; i < input.length(); i++){
+    char tmpChar = input.charAt(i);
+    if (tmpChar == delim){
+      count++;
+      output->push_back(tmp.c_str());
+      tmp = "";
+      continue;
+    }
+    tmp += tmpChar;
+    if (i+1 == input.length()){
+      output->push_back(tmp.c_str());
+    }
+  }
+}
+
+void bleResponse()
+{
+  Vector<String> splitVal;
+  splitVal.setStorage(BLE_RSP_ARRAY);
+  splitString(BLE_Wrt_Rsp, &splitVal, ';');
+
+  // //Check if valid
+  if (splitVal.at(0) != "%"){
+    Serial.printf("Invalid Starting Byte: %s", splitVal.at(0).c_str());
+    return;
+  }
+  if (!assertCheckSum(&splitVal)){
+    Serial.printf("Failed Sum Check: %s", splitVal.at(splitVal.size()-1).c_str());
+    return;
+  }
+
+  //Check where it is coming from
+  String src = splitVal.at(1);
+
+  //Check where it will be going to
+  String dst = splitVal.at(2);
+
+  //Check what command is calling
+  String cmd = splitVal.at(3);
+
+  //If to client
+  Serial.println(BLE_Wrt_Rsp);
+  if (dst == "TK2"){
+    if (src == "TK1"){
+      //To be added upon
+      if (cmd == "PWR"){
+        enterSleep();
+      }
+    } else if (src == "GUI") {
+      if (cmd == "CAL"){
+        calibrateTracker();
+      }
+
+    } else if (src == "DRV") {
+      
+    }
+  
+  }
+}
 
 bool connectToServer() {
     Serial.print("Forming a connection to ");
@@ -112,9 +273,20 @@ bool connectToServer() {
       Serial.println(value.c_str());
     }
 
+    if(pRemoteCharacteristic->canNotify())
+      pRemoteCharacteristic->registerForNotify(notifyCallback);
+
     connected = true;
     return true;
 }
+
+void enterSleep(){
+  Serial.println("Client going to sleep");
+  onePixel.setPixelColor(0, 0, 0, 0);//turn NeoPixel off
+  onePixel.show();//update pixel
+  esp_deep_sleep_start();//enter sleep
+}
+
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
  */
@@ -155,6 +327,13 @@ void setup()
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
 
+  // Setup the NeoPixel
+  onePixel.begin();
+  onePixel.clear();
+  onePixel.setBrightness(20);
+  onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is on but not connected
+  onePixel.show();
+
   //Find IMU
   if (!lsm6ds3trc.begin_I2C()) {
     Serial.println("Failed to find LSM6DS3TR-C chip. Please connect IMU to I2C connection.");
@@ -165,45 +344,24 @@ void setup()
 
   Serial.println("LSM6DS3TR-C Found!");
 
+  lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
+  lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
+  lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
+  lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
+
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
-  sensors_event_t accel, gyro, temp;
-  //Testing average calibration
-  Serial.println("Calibrating please wait...");
-  //Gets 100 samples of idling
-  for (unsigned int i = 0; i < 100; i++){
-    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-    accelAvg[0] += accel.acceleration.x;
-    accelAvg[1] += accel.acceleration.y;
-    accelAvg[2] += accel.acceleration.z;
-  }
-  unsigned int maxVal = 0;
-  //Determines what side is up and if the accelerometer is flipped or not
-  for (unsigned int i = 0; i < 3; i++){
-    accelAvg[i] /= 100.0f;
-    if (maxVal < abs(accelAvg[i])){
-      up = i;
-      maxVal = abs(accelAvg[i]);
-    }
-    if (accelAvg[i] < 0)
-      accelPos[i] = -1;
-    else
-      accelPos[i] = 1;
-  }
-
-  filter.begin(25);
-
-  Serial.println("Calibration done!");
-  
-
+  calibrateTracker();
 }
 
 void loop() 
 {
   //Waits until bluetooth is connected
-  if (doConnect == true) {
+  if (doConnect == true || connected == false) {
     if (connectToServer()) {
+      onePixel.setPixelColor(0, 0, 0, 200);//set to blue to indicate it is connected
+      onePixel.show();
       Serial.println("We are now connected to the BLE Server.");
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");
@@ -213,8 +371,18 @@ void loop()
 
   sensors_event_t accel, gyro, temp;
   lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+  static unsigned long prevReadingTime = millis();
 
-  filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
+  if (millis() - prevReadingTime >= 20){
+    prevReadingTime = millis();
+    filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
+  }
+
+  if (newBLERsp){
+    bleResponse();
+    newBLERsp = false;
+  }
+
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
@@ -238,56 +406,20 @@ void loop()
     below = false;
     above = false;
     if (nextStep){
-      //stepCount++;
       nextStep = false;
       String tmp;
-      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll();
+      tmp = tmp + "%;TK2;TK1;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";0";
+      Vector<String> splitTmp;
+      splitTmp.setStorage(BLE_RSP_ARRAY);
+      splitString(tmp, &splitTmp, ';');
+      tmp.remove(tmp.length()-1);
+      tmp = tmp + checkSumCalc(&splitTmp);
       Serial.println(tmp);
       if (connected)
         pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
-      //Serial.print("STEP COUNT: ");
-      //Serial.println(stepCount);
     } else {
       nextStep = true;
     }
-    
+
   }
-
-  //Calculates speed and sends it to OpenVR if it is high enough
-  if (stepCount >= 2){
-    //Stop Timer
-    unsigned long endTime = millis();
-    unsigned long timeDiff = endTime - startTime;
-
-
-    //Calculate freqeuncy of steps
-    float freq = stepCount/((float)timeDiff / 1000);
-    float speed = 0.3871*freq - 0.1038;
-
-    //Reset step counter and timer
-    stepCount = 0;
-    resetTime = true;
-
-    //Calculate speed between 0.0 and 1.0
-    Serial.println(freq);
-    
-
-    //Send to OpenVR drivers
-    if (speed >= 0.1){
-      Serial.println(speed);
-      //send to vr driver (sending as char string)
-      char buffer[5];
-      dtostrf(speed, 4, 2, buffer);
-      //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
-      String tmp;
-      tmp = tmp + "Yaw: " + filter.getYaw() + " Pitch: " + filter.getPitch() + " Roll: " + filter.getRoll();
-      Serial.println(tmp);
-      if (connected)
-        pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
-    } else {
-      //too slow, not sending
-    }
-  }  
-  
-  delay(35);
 }
