@@ -13,6 +13,7 @@
 #include <Adafruit_LSM6DS3TRC.h>
 #include <MadgwickAHRS.h>
 #include <Vector.h>
+#include <Adafruit_NeoPixel.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -63,6 +64,14 @@
   Adafruit_LSM6DS3TRC lsm6ds3trc;
   Madgwick filter;
 
+  //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
+  Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
+
+  int loopDelay = 35; //milliseconds we delay at end of each loop
+
+  int wakePeriod = 30 * 60000; // the number of milliseconds we want to wait before entering sleep mode
+  int timeLeftToLive = wakePeriod; // variable we will manipulate to actually track it
+
 //Classes
 
 void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify){
@@ -86,6 +95,10 @@ class MyClientCallback : public BLEClientCallbacks {
 
   void onDisconnect(BLEClient* pclient) {
     connected = false;
+
+    onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is disconnected
+    onePixel.show();
+
     Serial.println("onDisconnect");
   }
 };
@@ -198,10 +211,14 @@ void bleResponse()
   //Check what command is calling
   String cmd = splitVal.at(3);
 
-  //If to server
+  //If to client
+  Serial.println(BLE_Wrt_Rsp);
   if (dst == "TK2"){
     if (src == "TK1"){
       //To be added upon
+      if (cmd == "PWR"){
+        enterSleep();
+      }
     } else if (src == "GUI") {
       if (cmd == "CAL"){
         calibrateTracker();
@@ -262,6 +279,14 @@ bool connectToServer() {
     connected = true;
     return true;
 }
+
+void enterSleep(){
+  Serial.println("Client going to sleep");
+  onePixel.setPixelColor(0, 0, 0, 0);//turn NeoPixel off
+  onePixel.show();//update pixel
+  esp_deep_sleep_start();//enter sleep
+}
+
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
  */
@@ -302,6 +327,13 @@ void setup()
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
 
+  // Setup the NeoPixel
+  onePixel.begin();
+  onePixel.clear();
+  onePixel.setBrightness(20);
+  onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is on but not connected
+  onePixel.show();
+
   //Find IMU
   if (!lsm6ds3trc.begin_I2C()) {
     Serial.println("Failed to find LSM6DS3TR-C chip. Please connect IMU to I2C connection.");
@@ -328,6 +360,8 @@ void loop()
   //Waits until bluetooth is connected
   if (doConnect == true || connected == false) {
     if (connectToServer()) {
+      onePixel.setPixelColor(0, 0, 0, 200);//set to blue to indicate it is connected
+      onePixel.show();
       Serial.println("We are now connected to the BLE Server.");
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");

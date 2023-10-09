@@ -14,6 +14,7 @@
 //#include <MadgwickAHRS.h>
 #include <Adafruit_AHRS.h>
 #include <Vector.h>
+#include <Adafruit_NeoPixel.h>
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -66,15 +67,29 @@
   //Madgwick filter;
   Adafruit_Mahony filter;
 
+  //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
+  Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
+
+  int wakePeriod = 30 * 60000; // 30 minutes ... the number of milliseconds we want to wait before entering sleep mode
+  unsigned long startSleepTime = millis(); //get current time to later determine if we timed out for sleep
+  unsigned long currentSleepTime; // another value we will use for comparison later on for determining sleep
+
 //Classes
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
       isConnected = true;
       BLEDevice::startAdvertising();
+
+      onePixel.setPixelColor(0, 0, 0, 200);//turn NeoPixel to blue to indicate it is connected
+      onePixel.show();//update pixel
+
       Serial.println("Device Connected!");
     };
 
     void onDisconnect(BLEServer* pServer) {
+      onePixel.setPixelColor(0, 200, 0, 0); //set to red to indicate it disconnected
+      onePixel.show();
+
       Serial.println("Device Disconnected...");
       isConnected = false;
     }
@@ -267,10 +282,38 @@ void bleResponse()
   }
 }
 
+void enterSleep(){
+  Serial.println("Server going to sleep");
+  onePixel.setPixelColor(0, 0, 0, 0);//turn NeoPixel off
+  onePixel.show();//update pixel
+
+  String tmp;
+  tmp = tmp + "%;TK1;TK2;PWR;1;0";
+  Vector<String> splitTmp;
+  splitTmp.setStorage(BLE_RSP_ARRAY);
+  splitString(tmp, &splitTmp, ';');
+  tmp.remove(tmp.length()-1);
+  tmp = tmp + checkSumCalc(&splitTmp);
+  const char* tmp_c = tmp.c_str();
+  pCharacteristic_TRK->setValue((uint8_t*)tmp_c, tmp.length());
+  pCharacteristic_TRK->notify();
+
+  delay(1000);
+
+  esp_deep_sleep_start();//enter sleep
+}
+
 void setup() 
 {
   // Setup serial debugging
   Serial.begin(115200);
+
+  // Setup the NeoPixel
+  onePixel.begin();
+  onePixel.clear();
+  onePixel.setBrightness(20);
+  onePixel.setPixelColor(0, 100, 200, 0); //set to yellow to indicate it is on
+  onePixel.show();
 
   //Setup BLE
   //BLEDevice::init("MarchVR BLE Server Tracker");
@@ -349,10 +392,12 @@ void loop()
   static sensors_event_t accel, gyro, temp;
   //lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
+  unsigned long currTime = millis();
+
   //Update the IMU with new data
   static unsigned long prevTime = millis();
-  if (millis() - prevTime >= 20){
-    prevTime = millis();
+  if (currTime - prevTime >= 20){
+    prevTime = currTime;
     lsm6ds3trc.getEvent(&accel, &gyro, &temp);
     filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
     Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
@@ -378,7 +423,7 @@ void loop()
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
-    startTime = millis();
+    startTime = currTime;
     resetTime = false;
   }
   
@@ -412,7 +457,8 @@ void loop()
   //Calculates speed and sends it to OpenVR if it is high enough
   if (trackerStep1 && trackerStep2){
     //Stop Timer
-    unsigned long endTime = millis();
+    startSleepTime = currTime;
+    unsigned long endTime = currTime;
     unsigned long timeDiff = endTime - startTime;
 
 
@@ -438,9 +484,9 @@ void loop()
       dtostrf(speed, 4, 2, buffer);
       //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
 
-      //Send data with orienation to all connected devices
+      //Send data with orienation to the driver
       String tmp;
-      tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";" + speed + ";0";
+      tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');
@@ -449,10 +495,15 @@ void loop()
       const char* tmp_c = tmp.c_str();
       pCharacteristic_DRV->setValue((uint8_t*)tmp_c, tmp.length());
       pCharacteristic_DRV->notify();
+      // pCharacteristic_GUI->setValue((uint8_t*)tmp_c, tmp.length());
+      // pCharacteristic_GUI->notify();
       Serial.println(tmp);
-      //Serial.printf("Yaw: %f Pitch: %f Roll: %f", filter.getYaw(), filter.getPitch(), filter.getRoll());
     } else {
       //too slow, not sending
     }
   }  
-}
+
+  if(currTime - startSleepTime > wakePeriod){
+    enterSleep();
+  }
+}//end loop()
