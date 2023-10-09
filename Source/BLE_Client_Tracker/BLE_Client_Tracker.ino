@@ -95,6 +95,10 @@ class MyClientCallback : public BLEClientCallbacks {
 
   void onDisconnect(BLEClient* pclient) {
     connected = false;
+
+    onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is disconnected
+    onePixel.show();
+
     Serial.println("onDisconnect");
   }
 };
@@ -327,7 +331,7 @@ void setup()
   onePixel.begin();
   onePixel.clear();
   onePixel.setBrightness(20);
-  onePixel.setPixelColor(0, 0, 20, 200);
+  onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is on but not connected
   onePixel.show();
 
   //Find IMU
@@ -356,6 +360,8 @@ void loop()
   //Waits until bluetooth is connected
   if (doConnect == true || connected == false) {
     if (connectToServer()) {
+      onePixel.setPixelColor(0, 0, 0, 200);//set to blue to indicate it is connected
+      onePixel.show();
       Serial.println("We are now connected to the BLE Server.");
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");

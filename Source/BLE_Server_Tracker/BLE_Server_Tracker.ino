@@ -79,10 +79,17 @@ class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
       isConnected = true;
       BLEDevice::startAdvertising();
+
+      onePixel.setPixelColor(0, 0, 0, 200);//turn NeoPixel to blue to indicate it is connected
+      onePixel.show();//update pixel
+
       Serial.println("Device Connected!");
     };
 
     void onDisconnect(BLEServer* pServer) {
+      onePixel.setPixelColor(0, 200, 0, 0); //set to red to indicate it disconnected
+      onePixel.show();
+
       Serial.println("Device Disconnected...");
       isConnected = false;
     }
@@ -305,7 +312,7 @@ void setup()
   onePixel.begin();
   onePixel.clear();
   onePixel.setBrightness(20);
-  onePixel.setPixelColor(0, 0, 20, 200);
+  onePixel.setPixelColor(0, 100, 200, 0); //set to yellow to indicate it is on
   onePixel.show();
 
   //Setup BLE
@@ -385,10 +392,12 @@ void loop()
   static sensors_event_t accel, gyro, temp;
   //lsm6ds3trc.getEvent(&accel, &gyro, &temp);
 
+  unsigned long currTime = millis();
+
   //Update the IMU with new data
   static unsigned long prevTime = millis();
-  if (millis() - prevTime >= 20){
-    prevTime = millis();
+  if (currTime - prevTime >= 20){
+    prevTime = currTime;
     lsm6ds3trc.getEvent(&accel, &gyro, &temp);
     filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
     Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
@@ -414,7 +423,7 @@ void loop()
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
-    startTime = millis();
+    startTime = currTime;
     resetTime = false;
   }
   
@@ -448,8 +457,8 @@ void loop()
   //Calculates speed and sends it to OpenVR if it is high enough
   if (trackerStep1 && trackerStep2){
     //Stop Timer
-    startSleepTime = millis();
-    unsigned long endTime = millis();
+    startSleepTime = currTime;
+    unsigned long endTime = currTime;
     unsigned long timeDiff = endTime - startTime;
 
 
@@ -475,7 +484,7 @@ void loop()
       dtostrf(speed, 4, 2, buffer);
       //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
 
-      //Send data with orienation to all connected devices
+      //Send data with orienation to the driver
       String tmp;
       tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
       Vector<String> splitTmp;
@@ -486,15 +495,15 @@ void loop()
       const char* tmp_c = tmp.c_str();
       pCharacteristic_DRV->setValue((uint8_t*)tmp_c, tmp.length());
       pCharacteristic_DRV->notify();
+      // pCharacteristic_GUI->setValue((uint8_t*)tmp_c, tmp.length());
+      // pCharacteristic_GUI->notify();
       Serial.println(tmp);
-      //Serial.printf("Yaw: %f Pitch: %f Roll: %f", filter.getYaw(), filter.getPitch(), filter.getRoll());
     } else {
       //too slow, not sending
     }
   }  
 
-  currentSleepTime = millis();
-  if(currentSleepTime - startSleepTime > wakePeriod){
+  if(currTime - startSleepTime > wakePeriod){
     enterSleep();
   }
 }//end loop()
