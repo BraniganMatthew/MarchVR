@@ -9,9 +9,12 @@ import asyncio
 from bleak import BleakClient, BleakScanner
 
 calibrateFlag = False
+<<<<<<< HEAD
 connectFlag = False
 disconnectFlag = True
 errorFlag = False
+=======
+>>>>>>> main
 
 serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 characteristicUUID = "aad41096-f795-4b3b-83bb-858051e5e284"
@@ -37,6 +40,7 @@ updateTime = 1000 # in milliseconds - update our UI once every "updateTime" ms
 sum = 0
 
 async def main(): # This function loops for the duration the UI is open and handles BLE communication
+<<<<<<< HEAD
     while (True):
         global errorFlag
         if (errorFlag):
@@ -85,6 +89,28 @@ async def main(): # This function loops for the duration the UI is open and hand
             t2con.hide()
             t1discon.show()
             t2discon.show()
+=======
+
+    scanner = BleakScanner(service_uuids=serviceUUID, winrt=dict(use_cached_services=False))
+    server = await scanner.find_device_by_name("ESP32")
+    async with BleakClient(server) as client:
+        print("Printing services: ")
+        services = client.services
+        for s in services:
+            print(s)
+
+        print("UI is now ready")
+        await client.start_notify(characteristicUUID, notification_handler)
+        while(True):
+            global calibrateFlag
+            if (calibrateFlag):
+                print("Calibrating")
+                calibrateFlag = 0
+                calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
+                calibrationCommand = calibrationCommand.encode('utf-8')
+                await client.write_gatt_char(characteristicUUID, bytearray(calibrationCommand), response=True)
+            await asyncio.sleep(1)
+>>>>>>> main
 
 
 class Worker(QtCore.QObject): # This class and its function help set up/enable threading
@@ -153,6 +179,10 @@ class Window(QMainWindow): # This is our actual window for the UI
                 global sum
                 sum = sum ^ ord(x[i])
 
+<<<<<<< HEAD
+=======
+  
+>>>>>>> main
     def UiComponents(self): # This function creates every UI component within the window
 
         ### ----------------------------------- UI COMPONENTS ---------------------------------------- ###
@@ -324,6 +354,11 @@ class Window(QMainWindow): # This is our actual window for the UI
         print("Recalibrate clicked")
         global calibrateFlag
         calibrateFlag = True
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> main
 
     def clickCon(self): # Called when the connect button is clicked
         print("Connect clicked")
