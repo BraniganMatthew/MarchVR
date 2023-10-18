@@ -152,13 +152,13 @@ bool assertCheckSum(Vector<String>* input)
 void calibrateTracker()
 {
 
-  lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
-  lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
+  // lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
+  // lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
 
   filter.begin(26);
 
-  lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
-  lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
+  // lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
+  // lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
 
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
@@ -394,11 +394,11 @@ void setup()
 
   Serial.println("LIS3MDL Found!");
 
-  lis3mdl.setPerformanceMode(LIS3MDL_MEDIUMMODE);
-  lis3mdl.setOperationMode(LIS3MDL_CONTINUOUSMODE);
-  lis3mdl.setDataRate(LIS3MDL_DATARATE_40_HZ);
-  lis3mdl.setRange(LIS3MDL_RANGE_4_GAUSS);
-  lis3mdl.setIntThreshold(500);
+  // lis3mdl.setPerformanceMode(LIS3MDL_MEDIUMMODE);
+  // lis3mdl.setOperationMode(LIS3MDL_CONTINUOUSMODE);
+  // lis3mdl.setDataRate(LIS3MDL_DATARATE_40_HZ);
+  // lis3mdl.setRange(LIS3MDL_RANGE_4_GAUSS);
+  // lis3mdl.setIntThreshold(500);
   lis3mdl.configInterrupt(false, false, true, // enable z axis
                           true, // polarity
                           false, // don't latch
