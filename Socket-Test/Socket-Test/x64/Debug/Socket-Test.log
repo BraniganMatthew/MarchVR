@@ -1,0 +1,37 @@
+﻿  Socket-Test.cpp
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\Socket-Test\Socket-Test\Socket-Test.cpp(58): warning C4715: 'search_for_esp32_and_connect_by_service': not all control paths return a value
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\Socket-Test\Socket-Test\Socket-Test.cpp(68): warning C4715: 'search_for_esp32_and_connect_by_mac': not all control paths return a value
+simpleble.lib(Service.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(Service.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(Peripheral.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(Peripheral.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(Adapter.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(Adapter.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(ServiceBase.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(ServiceBase.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(Exceptions.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(Exceptions.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(PeripheralBase.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(PeripheralBase.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(AdapterBase.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(AdapterBase.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(AdapterBuilder.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(AdapterBuilder.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(Logging.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(Logging.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(Utils.cpp.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(Utils.cpp.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(CharacteristicBuilder.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(CharacteristicBuilder.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(DescriptorBuilder.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(DescriptorBuilder.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(ServiceBuilder.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(ServiceBuilder.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(PeripheralBuilder.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(PeripheralBuilder.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(CharacteristicBase.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(CharacteristicBase.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+simpleble.lib(DescriptorBase.obj) : error LNK2038: mismatch detected for '_ITERATOR_DEBUG_LEVEL': value '0' doesn't match value '2' in Socket-Test.obj
+simpleble.lib(DescriptorBase.obj) : error LNK2038: mismatch detected for 'RuntimeLibrary': value 'MD_DynamicRelease' doesn't match value 'MDd_DynamicDebug' in Socket-Test.obj
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\Socket-Test\x64\Debug\Socket-Test.exe : fatal error LNK1319: 32 mismatches detected
