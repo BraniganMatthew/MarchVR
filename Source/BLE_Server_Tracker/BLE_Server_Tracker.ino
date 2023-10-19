@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/4/2023 */
+/* Modified on: 10/16/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -11,6 +11,7 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <Adafruit_LSM6DS3TRC.h>
+#include <Adafruit_LIS3MDL.h>
 //#include <MadgwickAHRS.h>
 #include <Adafruit_AHRS.h>
 #include <Vector.h>
@@ -64,8 +65,9 @@
 
   //IMU Oridentation Filtering
   Adafruit_LSM6DS3TRC lsm6ds3trc;
+  Adafruit_LIS3MDL lis3mdl;
   //Madgwick filter;
-  Adafruit_Mahony filter;
+  Adafruit_Madgwick filter;
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -150,13 +152,13 @@ bool assertCheckSum(Vector<String>* input)
 void calibrateTracker()
 {
 
-  lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
-  lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
+  // lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
+  // lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
 
   filter.begin(26);
 
-  lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
-  lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
+  // lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
+  // lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
 
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
@@ -383,6 +385,26 @@ void setup()
 
   Serial.println("LSM6DS3TR-C Found!");
 
+  if (! lis3mdl.begin_I2C()) {
+    Serial.println("Failed to find LIS3MDL chip");
+    while (1) { 
+      delay(10);
+    }
+  }
+
+  Serial.println("LIS3MDL Found!");
+
+  // lis3mdl.setPerformanceMode(LIS3MDL_MEDIUMMODE);
+  // lis3mdl.setOperationMode(LIS3MDL_CONTINUOUSMODE);
+  // lis3mdl.setDataRate(LIS3MDL_DATARATE_40_HZ);
+  // lis3mdl.setRange(LIS3MDL_RANGE_4_GAUSS);
+  // lis3mdl.setIntThreshold(500);
+  lis3mdl.configInterrupt(false, false, true, // enable z axis
+                          true, // polarity
+                          false, // don't latch
+                          true); // enabled!
+
+
   calibrateTracker();
 
 }
@@ -397,10 +419,14 @@ void loop()
   //Update the IMU with new data
   static unsigned long prevTime = millis();
   if (currTime - prevTime >= 20){
+    sensors_event_t mag;
     prevTime = currTime;
     lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-    filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
+    lis3mdl.read(); 
+    lis3mdl.getEvent(&mag);
+    filter.update(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
     Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
+    //Serial.printf("X: %f Y: %f Z: %f\n", mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
   }
  
   //If a device disconnects
