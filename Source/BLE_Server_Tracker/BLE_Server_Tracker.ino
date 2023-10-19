@@ -57,6 +57,8 @@
   float accelAvg[3];
   short accelPos[3];
   unsigned int up = 0;
+  double referenceHeading;
+  bool referenceHeadingFlag = true;
 
   //Filtering and Frequency Variables
   float prevVal = 0.0f;
@@ -187,6 +189,7 @@ void calibrateTracker()
     else
       accelPos[i] = 1;
   }
+  referenceHeadingFlag = true;
 
   Serial.println("Calibration done!");
 }
@@ -425,8 +428,25 @@ void loop()
     lis3mdl.read(); 
     lis3mdl.getEvent(&mag);
     filter.update(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
-    Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
-    //Serial.printf("X: %f Y: %f Z: %f\n", mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+    // Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
+    // Serial.printf("X: %f Y: %f Z: %f\n", mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+
+    if (referenceHeadingFlag) {
+      referenceHeading = atan2((double)mag.magnetic.y, (double)mag.magnetic.z) * 180 / 3.14159;
+      if (referenceHeading < 0) {
+        referenceHeading = referenceHeading + 360;
+      }
+      referenceHeadingFlag = false;
+    }
+    double heading = (atan2((double)mag.magnetic.y, (double)mag.magnetic.z) * 180 / 3.14159);
+    if (heading < 0) {
+      heading = heading + 360;
+    }
+    heading = heading - referenceHeading;
+    if (heading < 0) {
+      heading = heading + 360;
+    }
+    Serial.printf("Heading: %f\n", heading);
   }
  
   //If a device disconnects
@@ -512,7 +532,7 @@ void loop()
 
       //Send data with orienation to the driver
       String tmp;
-      tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
+      tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYaw() + ";" + filter.getPitch() + ";" + filter.getRoll() + ";" + speed + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');
