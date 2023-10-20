@@ -69,7 +69,9 @@
 
   int loopDelay = 35; //milliseconds we delay at end of each loop
 
-  int wakePeriod = 30 * 60000; // the number of milliseconds we want to wait before entering sleep mode
+  int wakePeriod = 45 * 60000; // the number of milliseconds we want to wait before entering sleep mode
+  unsigned long startSleepTime = millis(); //get current time to later determine if we timed out for sleep
+  unsigned long currentSleepTime; // another value we will use for comparison later on for determining sleep
   int timeLeftToLive = wakePeriod; // variable we will manipulate to actually track it
 
 //Classes
@@ -417,9 +419,15 @@ void loop()
       Serial.println(tmp);
       if (connected)
         pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
+
+      startSleepTime = millis();
     } else {
       nextStep = true;
     }
+  }
 
+  //Added backup timer to make sure that the client will fall asleep without a connection to the server
+  if(millis() - startSleepTime > wakePeriod){
+    enterSleep();
   }
 }
