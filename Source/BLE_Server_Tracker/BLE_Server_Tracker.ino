@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/16/2023 */
+/* Modified on: 10/24/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -14,6 +14,7 @@
 #include <Adafruit_LIS3MDL.h>
 //#include <MadgwickAHRS.h>
 #include <Adafruit_AHRS.h>
+#include <Adafruit_Sensor_Calibration.h>
 #include <Vector.h>
 #include <Adafruit_NeoPixel.h>
 
@@ -68,6 +69,7 @@
   Adafruit_LIS3MDL lis3mdl;
   //Madgwick filter;
   Adafruit_Madgwick filter;
+  Adafruit_Sensor_Calibration_EEPROM cal;
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -154,8 +156,6 @@ void calibrateTracker()
 
   // lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
   // lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
-
-  filter.begin(26);
 
   // lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
   // lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
@@ -407,6 +407,8 @@ void setup()
 
   calibrateTracker();
 
+  filter.begin(100);
+
 }
 
 void loop() 
@@ -416,19 +418,6 @@ void loop()
 
   unsigned long currTime = millis();
 
-  //Update the IMU with new data
-  static unsigned long prevTime = millis();
-  if (currTime - prevTime >= 20){
-    sensors_event_t mag;
-    prevTime = currTime;
-    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-    lis3mdl.read(); 
-    lis3mdl.getEvent(&mag);
-    filter.update(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
-    Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
-    //Serial.printf("X: %f Y: %f Z: %f\n", mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
-  }
- 
   //If a device disconnects
   if (!isConnected && prevConnected){
     delay(500); // give the bluetooth stack the chance to get things ready
@@ -445,6 +434,24 @@ void loop()
   if (newBLERsp){
     bleResponse();
     newBLERsp = false;
+  }
+
+  //Update the IMU with new data
+  static unsigned long prevTime = millis();
+  if (currTime - prevTime < 10){
+    return;
+  } else {
+    sensors_event_t mag;
+    prevTime = currTime;
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+    lis3mdl.read(); 
+    lis3mdl.getEvent(&mag);
+    cal.calibrate(mag);
+    cal.calibrate(accel);
+    cal.calibrate(gyro);
+    filter.update(gyro.gyro.x * SENSORS_RADS_TO_DPS, gyro.gyro.y * SENSORS_RADS_TO_DPS, gyro.gyro.z * SENSORS_RADS_TO_DPS, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+    //Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
+    //Serial.printf("X: %f Y: %f Z: %f\n", mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
   }
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
@@ -505,11 +512,6 @@ void loop()
     //Send to OpenVR drivers
     if (speed >= 0.1){
       Serial.println(speed);
-      //send to vr driver (sending as char string)
-      char buffer[5];
-      dtostrf(speed, 4, 2, buffer);
-      //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
-
       //Send data with orienation to the driver
       String tmp;
       tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
@@ -521,8 +523,6 @@ void loop()
       const char* tmp_c = tmp.c_str();
       pCharacteristic_DRV->setValue((uint8_t*)tmp_c, tmp.length());
       pCharacteristic_DRV->notify();
-      // pCharacteristic_GUI->setValue((uint8_t*)tmp_c, tmp.length());
-      // pCharacteristic_GUI->notify();
       Serial.println(tmp);
     } else {
       //too slow, not sending

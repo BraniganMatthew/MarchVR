@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/3/2023 */
+/* Modified on: 10/24/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -11,7 +11,10 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <Adafruit_LSM6DS3TRC.h>
-#include <MadgwickAHRS.h>
+#include <Adafruit_LIS3MDL.h>
+//#include <MadgwickAHRS.h>
+#include <Adafruit_AHRS.h>
+#include <Adafruit_Sensor_Calibration.h>
 #include <Vector.h>
 #include <Adafruit_NeoPixel.h>
 
@@ -62,7 +65,10 @@
 
   //IMU Oridentation Filtering
   Adafruit_LSM6DS3TRC lsm6ds3trc;
-  Madgwick filter;
+  Adafruit_LIS3MDL lis3mdl;
+  //Madgwick filter;
+  Adafruit_Madgwick filter;
+  Adafruit_Sensor_Calibration_EEPROM cal;
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -134,8 +140,6 @@ void calibrateTracker()
     else
       accelPos[i] = 1;
   }
-
-  filter.begin(26);
 
   Serial.println("Calibration done!");
 }
@@ -346,6 +350,16 @@ void setup()
 
   Serial.println("LSM6DS3TR-C Found!");
 
+
+  if (! lis3mdl.begin_I2C()) {
+    Serial.println("Failed to find LIS3MDL chip");
+    while (1) { 
+      delay(10);
+    }
+  }
+
+  Serial.println("LIS3MDL Found!");
+
   lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
   lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
   lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
@@ -354,7 +368,14 @@ void setup()
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
+  lis3mdl.configInterrupt(false, false, true, // enable z axis
+                        true, // polarity
+                        false, // don't latch
+                        true); // enabled!
+
   calibrateTracker();
+
+  filter.begin(100);
 }
 
 void loop() 
@@ -371,19 +392,29 @@ void loop()
     doConnect = false;
   }
 
-  sensors_event_t accel, gyro, temp;
-  lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-  static unsigned long prevReadingTime = millis();
-
-  if (millis() - prevReadingTime >= 20){
-    prevReadingTime = millis();
-    filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
-  }
-
   if (newBLERsp){
     bleResponse();
     newBLERsp = false;
   }
+
+  
+  static unsigned long prevReadingTime = millis();
+  sensors_event_t accel, gyro, temp;
+  if (millis() - prevReadingTime < 10){
+    return;
+  } else {
+    sensors_event_t mag;
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+    lis3mdl.read(); 
+    lis3mdl.getEvent(&mag);
+    cal.calibrate(mag);
+    cal.calibrate(accel);
+    cal.calibrate(gyro);
+    prevReadingTime = millis();
+    filter.update(gyro.gyro.x * SENSORS_RADS_TO_DPS, gyro.gyro.y * SENSORS_RADS_TO_DPS, gyro.gyro.z * SENSORS_RADS_TO_DPS, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+    Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
+  }
+
 
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
