@@ -85,7 +85,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
       isConnected = true;
       BLEDevice::startAdvertising();
 
-      onePixel.setPixelColor(0, 0, 0, 200);//turn NeoPixel to blue to indicate it is connected
+      onePixel.setPixelColor(0, 0, 0, 200);//turn NeoPixel to blue to indicate it is connected, battery status not yet checked though
       onePixel.show();//update pixel
 
       Serial.println("Device Connected!");
@@ -315,7 +315,7 @@ void setup()
   onePixel.begin();
   onePixel.clear();
   onePixel.setBrightness(20);
-  onePixel.setPixelColor(0, 100, 200, 0); //set to yellow to indicate it is on
+  onePixel.setPixelColor(0, 200, 0, 0); //set to red to indicate it is on but not yet connected
   onePixel.show();
 
   //Setup BLE
@@ -457,15 +457,20 @@ void loop()
 
   //Check Battery and Change Battery Level
   float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
-  if (measuredvbat > 3.79f){
-    //High Battery
-    //Serial.println("High Battery!");
-  } else if (measuredvbat < 3.7f){
-    //Low Battery
-    //Serial.println("Low Battery!");
-  } else {
-    //Normal Battery
-    //Serial.println("Normal Battery!");
+  if(isConnected){ // ensure we are connected
+    if (measuredvbat > 3.79f){
+      //High Battery
+      //Serial.println("High Battery!");
+      onePixel.setPixelColor(0, 0, 200, 0);//green
+    } else if (measuredvbat < 3.7f){
+      //Low Battery
+      //Serial.println("Low Battery!");
+      onePixel.setPixelColor(0, 100, 200, 0);//yellow
+    } else {
+      //Normal Battery
+      //Serial.println("Normal Battery!");
+      onePixel.setPixelColor(0, 0, 0, 200);//blue
+    }
   }
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
