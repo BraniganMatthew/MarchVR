@@ -62,7 +62,7 @@
 
   //Filtering and Frequency Variables
   float prevVal = 0.0f;
-  unsigned long startTime;
+  unsigned long tk1Time, tk2Time;
   bool resetTime = true;
 
   //IMU Oridentation Filtering
@@ -236,6 +236,7 @@ void bleResponse()
   if (dst == "TK1"){
     if (src == "TK2"){
       trackerStep2 = true;
+      tk2Time = millis();
     } else if (src == "GUI") {
       if (cmd == "CAL"){
         //Send data with orienation to all connected devices
@@ -469,10 +470,10 @@ void loop()
   }
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
-  if (resetTime){
-    startTime = currTime;
-    resetTime = false;
-  }
+  // if (resetTime){
+  //   startTime = currTime;
+  //   resetTime = false;
+  // }
   
   //Applies IIR smoothing filter to acceleration
   float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
@@ -491,10 +492,11 @@ void loop()
     above = false;
     if (nextStep){
       //stepCount++;
-      if (trackerStep2 == false){
-        startTime = currTime;
-      }
+      // if (trackerStep2 ^ trackerStep1){
+      //   startTime = currTime;
+      // }
       trackerStep1 = true;
+      tk1Time = millis();
       nextStep = false;
       Serial.println("TRACKER STEP 1");
       //Serial.println(stepCount);
@@ -508,12 +510,12 @@ void loop()
   if (trackerStep1 && trackerStep2){
     //Stop Timer
     startSleepTime = currTime;
-    unsigned long endTime = currTime;
-    unsigned long timeDiff = endTime - startTime;
-
+    //unsigned long endTime = currTime;
+    unsigned long timeDiff = max(tk1Time, tk2Time) - min(tk1Time, tk2Time);
 
     //Calculate freqeuncy of steps
     float freq = 2/((float)timeDiff / 1000);
+    Serial.printf("Frequency: %f\n", freq);
     float speed = 0.3871*freq - 0.1038;
 
     //Reset step counter and timer
