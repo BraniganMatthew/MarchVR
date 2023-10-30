@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/24/2023 */
+/* Modified on: 10/26/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -18,6 +18,7 @@
 #include <Vector.h>
 #include <Adafruit_NeoPixel.h>
 
+
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
@@ -31,6 +32,7 @@
 //VALUE DEFINES
 #define SMOOTHING_ALPHA 0.3f
 #define MAX_DATA_PARA   20
+#define VBATPIN A13
 
 // Global Variables
 
@@ -415,6 +417,18 @@ void loop()
     Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
   }
 
+  //Check Battery and Change Battery Level
+  float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
+  if (measuredvbat > 3.79f){
+    //High Battery
+    Serial.println("High Battery!");
+  } else if (measuredvbat < 3.7f){
+    //Low Battery
+    Serial.println("Low Battery!");
+  } else {
+    //Normal Battery
+    Serial.println("Normal Battery!");
+  }
 
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)

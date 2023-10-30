@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/24/2023 */
+/* Modified on: 10/26/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -31,6 +31,7 @@
 //VALUE DEFINES
 #define SMOOTHING_ALPHA 0.3f
 #define MAX_DATA_PARA   20
+#define VBATPIN A13
 
 // Global Variables
 
@@ -454,6 +455,19 @@ void loop()
     //Serial.printf("X: %f Y: %f Z: %f\n", mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
   }
 
+  //Check Battery and Change Battery Level
+  float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
+  if (measuredvbat > 3.79f){
+    //High Battery
+    //Serial.println("High Battery!");
+  } else if (measuredvbat < 3.7f){
+    //Low Battery
+    //Serial.println("Low Battery!");
+  } else {
+    //Normal Battery
+    //Serial.println("Normal Battery!");
+  }
+
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
     startTime = currTime;
@@ -477,6 +491,9 @@ void loop()
     above = false;
     if (nextStep){
       //stepCount++;
+      if (trackerStep2 == false){
+        startTime = currTime;
+      }
       trackerStep1 = true;
       nextStep = false;
       Serial.println("TRACKER STEP 1");
