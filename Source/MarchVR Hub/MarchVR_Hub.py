@@ -15,12 +15,6 @@ errorFlag = False
 serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 characteristicUUID = "22d7a034-791d-49f6-a84e-ef78ab2473ad"
 
-def listToString(inputList): # Helps turn a byte stream into a string of characters
-    outputString = ""
-    for i in inputList:
-        outputString += chr(i)
-    return outputString
-
 movementString = ""
 
 winWidth = 250
@@ -40,62 +34,56 @@ async def main(): # This function loops for the duration the UI is open and hand
     try:
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientSocket.connect(("localhost", 8080))
-        if (errorFlag):
-            errorFlag = False
-        connectFlag = True
+        print('Connected to socket')
     except Exception as ex:
         template = "An exception of type {0} occurred when trying to connect. Arguments:\n{1!r}"
         message = template.format(type(ex).__name__, ex.args)
         print(message)
         errorFlag = True
-        connectFlag = False
     while (True):
-            try:
-                # GUI logic
-                if (errorFlag):
-                    t1error.show()
-                    t2error.show()
-                    t1con.hide()
-                    t2con.hide()
-                    t1discon.hide()
-                    t2discon.hide()
-                    continue
-                elif (connectFlag):
-                    t1error.hide()
-                    t2error.hide()
-                    t1con.show()
-                    t2con.show()
-                    t1discon.hide()
-                    t2discon.hide()
-                    if (calibrateFlag):
-                        print("Calibrating")
-                        calibrateFlag = False
-                        calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
-                        calibrationCommand = calibrationCommand.encode('utf-8')
-                        clientSocket.send(calibrationCommand)
-                else:
-                    print("Disconnected")
-                    t1error.hide()
-                    t2error.hide()
-                    t1con.hide()
-                    t2con.hide()
-                    t1discon.show()
-                    t2discon.show()
+        if (errorFlag):
+            t1con.hide()
+            t2con.hide()
+            t1discon.hide()
+            t2discon.hide()
+            t1error.show()
+            t2error.show()
+            break
+        else:
+            t1con.hide()
+            t2con.hide()
+            t1discon.show()
+            t2discon.show()
+            t1error.hide()
+            t2error.hide()
+        try: 
+            if (calibrateFlag):
+                calibrateFlag = False
+                calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
+                calibrationCommand = calibrationCommand.encode('utf-8')
+                clientSocket.send(calibrationCommand)
+                print('Calibration command sent')
 
-                # receive message
-                data = clientSocket.recv(128).decode()
-                if not data:
-                    continue
-                else:
-                    movementString = listToString(list(data))
-                print("Received:", data)
-            except Exception as ex:
-                template = "An exception of type {0} occurred when trying to send/receive. Arguments:\n{1!r}"
-                message = template.format(type(ex).__name__, ex.args)
-                print(message)
-                errorFlag = True
-                connectFlag = False
-                break
+            # receive message
+            data = clientSocket.recv(128).decode()
+            t1con.show()
+            t2con.show()
+            t1discon.hide()
+            t2discon.hide()
+            t1error.hide()
+            t2error.hide()
+            if not data:
+                continue
+            else:
+                movementString = data
+            print("Received:", data)
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to send/receive. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print(message)
+            errorFlag = True
+            connectFlag = False
+            break # Break to force reconnect
 
 
 class Worker(QtCore.QObject): # This class and its function help set up/enable threading
@@ -253,13 +241,6 @@ class Window(QMainWindow): # This is our actual window for the UI
         t1discon.setGeometry(t1x + 70, t1y, 200, 50)
         t1discon.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
 
-        # not connected text
-        global t1disconnecting
-        t1disconnecting = QLabel("Disconnecting...", self)
-        t1disconnecting.setGeometry(t1x + 70, t1y, 200, 50)
-        t1disconnecting.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
-        t1disconnecting.hide()
-
         # error text
         global t1error
         t1error = QLabel("ERROR", self)
@@ -287,13 +268,6 @@ class Window(QMainWindow): # This is our actual window for the UI
         t2discon.setGeometry(t2x + 70, t2y, 200, 50)
         t2discon.setStyleSheet("QLabel{font-size: 12pt; color: red}")
         t2discon.hide()
-
-         # not connected text
-        global t2disconnecting
-        t2disconnecting = QLabel("Disconnecting...", self)
-        t2disconnecting.setGeometry(t2x + 70, t2y, 200, 50)
-        t2disconnecting.setStyleSheet("QLabel{font-size: 12pt; color: red}")
-        t2disconnecting.hide()
 
         # error text
         global t2error
@@ -359,10 +333,6 @@ class Window(QMainWindow): # This is our actual window for the UI
         print("Disconnect clicked")
         global connectFlag
         connectFlag = False
-        t1con.hide()
-        t2con.hide()
-        t1disconnecting.show()
-        t2disconnecting.show()
 
 # create pyqt5 app
 App = QApplication(sys.argv)
