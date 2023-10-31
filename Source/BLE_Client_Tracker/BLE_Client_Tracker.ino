@@ -106,7 +106,7 @@ class MyClientCallback : public BLEClientCallbacks {
   void onDisconnect(BLEClient* pclient) {
     connected = false;
 
-    onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is disconnected
+    onePixel.setPixelColor(0, 200, 0, 0);//set to red to indicate it is disconnected
     onePixel.show();
 
     Serial.println("onDisconnect");
@@ -251,6 +251,7 @@ bool connectToServer() {
     // Connect to the remove BLE Server.
     pClient->connect(myDevice);  // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
     Serial.println(" - Connected to server");
+    connected = true;
     pClient->setMTU(517); //set client to request maximum MTU from server (default is 23 otherwise)
   
     // Obtain a reference to the service we are after in the remote BLE server.
@@ -339,7 +340,7 @@ void setup()
   onePixel.begin();
   onePixel.clear();
   onePixel.setBrightness(20);
-  onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is on but not connected
+  onePixel.setPixelColor(0, 200, 0, 0);//set to red to indicate it is on but not connected
   onePixel.show();
 
   //Find IMU
@@ -385,9 +386,10 @@ void loop()
   //Waits until bluetooth is connected
   if (doConnect == true || connected == false) {
     if (connectToServer()) {
-      onePixel.setPixelColor(0, 0, 0, 200);//set to blue to indicate it is connected
+      onePixel.setPixelColor(0, 0, 150, 200);//set to blueish green to indicate it is connected battery not yet checked
       onePixel.show();
       Serial.println("We are now connected to the BLE Server.");
+      connected = true;
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");
     }
@@ -415,19 +417,28 @@ void loop()
     prevReadingTime = millis();
     filter.update(gyro.gyro.x * SENSORS_RADS_TO_DPS, gyro.gyro.y * SENSORS_RADS_TO_DPS, gyro.gyro.z * SENSORS_RADS_TO_DPS, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
     Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
+    //if(connected){Serial.println("Connected " + connected);}
   }
 
   //Check Battery and Change Battery Level
   float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
-  if (measuredvbat > 3.79f){
-    //High Battery
-    Serial.println("High Battery!");
-  } else if (measuredvbat < 3.7f){
-    //Low Battery
-    Serial.println("Low Battery!");
-  } else {
-    //Normal Battery
-    Serial.println("Normal Battery!");
+  if(connected){ // ensure we are connected
+    if (measuredvbat > 3.79f){
+      //High Battery
+      //Serial.println("High Battery!");
+      onePixel.setPixelColor(0, 0, 200, 0);//green
+      onePixel.show();//update pixel
+    } else if (measuredvbat < 3.7f){
+      //Low Battery
+      //Serial.println("Low Battery!");
+      onePixel.setPixelColor(0, 100, 200, 0);//yellow
+      onePixel.show();//update pixel
+    } else {
+      //Normal Battery
+      //Serial.println("Normal Battery!");
+      onePixel.setPixelColor(0, 0, 0, 200);//blue
+      onePixel.show();//update pixel
+    }
   }
 
 

@@ -463,14 +463,17 @@ void loop()
       //High Battery
       //Serial.println("High Battery!");
       onePixel.setPixelColor(0, 0, 200, 0);//green
+      onePixel.show();
     } else if (measuredvbat < 3.7f){
       //Low Battery
       //Serial.println("Low Battery!");
       onePixel.setPixelColor(0, 100, 200, 0);//yellow
+      onePixel.show();
     } else {
       //Normal Battery
       //Serial.println("Normal Battery!");
       onePixel.setPixelColor(0, 0, 0, 200);//blue
+      onePixel.show();
     }
   }
 
