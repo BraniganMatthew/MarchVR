@@ -22,9 +22,6 @@ def listToString(inputList): # Helps turn a byte stream into a string of charact
     return outputString
 
 movementString = ""
-def notification_handler(sender, data): # Called when we are notified by a tracker via BLE
-            global movementString
-            movementString = listToString(list(data))
 
 winWidth = 250
 winHeight = 400
@@ -39,6 +36,7 @@ async def main(): # This function loops for the duration the UI is open and hand
     global connectFlag
     global errorFlag
     global calibrateFlag
+    global movementString
     try:
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientSocket.connect(("localhost", 8080))
@@ -58,6 +56,8 @@ async def main(): # This function loops for the duration the UI is open and hand
             data = clientSocket.recv(128).decode()
             if not data:
                 break
+            else:
+                movementString = listToString(list(data))
             print("Received:", data)
             if (errorFlag):
                 t1error.show()
