@@ -42,49 +42,38 @@ async def main(): # This function loops for the duration the UI is open and hand
         clientSocket.connect(("localhost", 8080))
         if (errorFlag):
             errorFlag = False
-            connectFlag = True
-        else:
-            connectFlag = True
+        connectFlag = True
     except Exception as ex:
-        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        template = "An exception of type {0} occurred when trying to connect. Arguments:\n{1!r}"
         message = template.format(type(ex).__name__, ex.args)
         print(message)
         errorFlag = True
         connectFlag = False
     while (True):
-            # receive message
-            data = clientSocket.recv(128).decode()
-            if not data:
-                break
-            else:
-                movementString = listToString(list(data))
-            print("Received:", data)
-            if (errorFlag):
-                t1error.show()
-                t2error.show()
-                t1con.hide()
-                t2con.hide()
-                t1discon.hide()
-                t2discon.hide()
-                continue
-            elif (connectFlag):
-                t1error.hide()
-                t2error.hide()
-                t1con.show()
-                t2con.show()
-                t1discon.hide()
-                t2discon.hide()
-                continue
-            else:
-                if (calibrateFlag and connectFlag):
-                    print("Calibrating")
-                    calibrateFlag = 0
-                    calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
-                    calibrationCommand = calibrationCommand.encode('utf-8')
-                    clientSocket.send(calibrationCommand)
-                elif (calibrateFlag and not connectFlag):
-                    print("Error: Calibrate command sent while disconnected")
-                elif (not connectFlag):
+            try:
+                # GUI logic
+                if (errorFlag):
+                    t1error.show()
+                    t2error.show()
+                    t1con.hide()
+                    t2con.hide()
+                    t1discon.hide()
+                    t2discon.hide()
+                    continue
+                elif (connectFlag):
+                    t1error.hide()
+                    t2error.hide()
+                    t1con.show()
+                    t2con.show()
+                    t1discon.hide()
+                    t2discon.hide()
+                    if (calibrateFlag):
+                        print("Calibrating")
+                        calibrateFlag = False
+                        calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
+                        calibrationCommand = calibrationCommand.encode('utf-8')
+                        clientSocket.send(calibrationCommand)
+                else:
                     print("Disconnected")
                     t1error.hide()
                     t2error.hide()
@@ -92,7 +81,21 @@ async def main(): # This function loops for the duration the UI is open and hand
                     t2con.hide()
                     t1discon.show()
                     t2discon.show()
+
+                # receive message
+                data = clientSocket.recv(128).decode()
+                if not data:
                     continue
+                else:
+                    movementString = listToString(list(data))
+                print("Received:", data)
+            except Exception as ex:
+                template = "An exception of type {0} occurred when trying to send/receive. Arguments:\n{1!r}"
+                message = template.format(type(ex).__name__, ex.args)
+                print(message)
+                errorFlag = True
+                connectFlag = False
+                break
 
 
 class Worker(QtCore.QObject): # This class and its function help set up/enable threading
