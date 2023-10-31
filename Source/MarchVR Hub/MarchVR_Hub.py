@@ -6,11 +6,10 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import sys
 import asyncio
-from bleak import BleakClient, BleakScanner
+import socket
 
 calibrateFlag = False
 connectFlag = False
-disconnectFlag = True
 errorFlag = False
 
 serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -37,57 +36,63 @@ updateTime = 1000 # in milliseconds - update our UI once every "updateTime" ms
 sum = 0
 
 async def main(): # This function loops for the duration the UI is open and handles BLE communication
-    while (True):
-        global errorFlag
+    global connectFlag
+    global errorFlag
+    global calibrateFlag
+    try:
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        clientSocket.connect(("localhost", 8080))
         if (errorFlag):
-            t1error.show()
-            t2error.show()
-            t1con.hide()
-            t2con.hide()
-            t1discon.hide()
-            t2discon.hide()
-            continue
-        elif (connectFlag):
-            scanner = BleakScanner(service_uuids=serviceUUID, winrt=dict(use_cached_services=False))
-            server = await scanner.find_device_by_name("ESP32")
-            if (server == None): 
-                await asyncio.sleep(10)
+            errorFlag = False
+            connectFlag = True
+        else:
+            connectFlag = True
+    except Exception as ex:
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(ex).__name__, ex.args)
+        print(message)
+        errorFlag = True
+        connectFlag = False
+    while (True):
+            # receive message
+            data = clientSocket.recv(128).decode()
+            if not data:
+                break
+            print("Received:", data)
+            if (errorFlag):
+                t1error.show()
+                t2error.show()
+                t1con.hide()
+                t2con.hide()
+                t1discon.hide()
+                t2discon.hide()
                 continue
-            else:
+            elif (connectFlag):
+                t1error.hide()
+                t2error.hide()
                 t1con.show()
                 t2con.show()
                 t1discon.hide()
                 t2discon.hide()
-            try:
-                async with BleakClient(server) as client:
-                    await client.start_notify(characteristicUUID, notification_handler)
-                    while(True):
-                        global calibrateFlag
-                        if (calibrateFlag and connectFlag):
-                            print("Calibrating")
-                            calibrateFlag = 0
-                            calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
-                            calibrationCommand = calibrationCommand.encode('utf-8')
-                            await client.write_gatt_char(characteristicUUID, bytearray(calibrationCommand), response=True)
-                        elif (calibrateFlag and disconnectFlag):
-                            print("Error: Calibrate command sent while disconnected")
-                        elif (disconnectFlag):
-                            print("Disconnected")
-                            if (server != None):
-                                await client.disconnect()
-                            break
-                        await asyncio.sleep(1)
-            except Exception as ex:
-                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                message = template.format(type(ex).__name__, ex.args)
-                print(message)
-                errorFlag = True
                 continue
-        else:
-            t1disconnecting.hide()
-            t2disconnecting.hide()
-            t1discon.show()
-            t2discon.show()
+            else:
+                if (calibrateFlag and connectFlag):
+                    print("Calibrating")
+                    calibrateFlag = 0
+                    calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
+                    calibrationCommand = calibrationCommand.encode('utf-8')
+                    clientSocket.send(calibrationCommand)
+                elif (calibrateFlag and not connectFlag):
+                    print("Error: Calibrate command sent while disconnected")
+                elif (not connectFlag):
+                    print("Disconnected")
+                    t1error.hide()
+                    t2error.hide()
+                    t1con.hide()
+                    t2con.hide()
+                    t1discon.show()
+                    t2discon.show()
+                    continue
 
 
 class Worker(QtCore.QObject): # This class and its function help set up/enable threading
@@ -346,15 +351,11 @@ class Window(QMainWindow): # This is our actual window for the UI
         print("Connect clicked")
         global connectFlag
         connectFlag = True
-        global disconnectFlag
-        disconnectFlag = False
 
     def clickDiscon(self): # Called when the connect button is clicked
         print("Disconnect clicked")
         global connectFlag
         connectFlag = False
-        global disconnectFlag
-        disconnectFlag = True
         t1con.hide()
         t2con.hide()
         t1disconnecting.show()
