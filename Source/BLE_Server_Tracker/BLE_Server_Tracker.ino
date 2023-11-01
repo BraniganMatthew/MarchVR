@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/26/2023 */
+/* Modified on: 11/1/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -32,6 +32,8 @@
 #define SMOOTHING_ALPHA 0.3f
 #define MAX_DATA_PARA   20
 #define VBATPIN A13
+#define FREQ_MAX_PER 0.50f
+#define FREQ_MIN 0.50f
 
 // Global Variables
 
@@ -188,6 +190,9 @@ void calibrateTracker()
     else
       accelPos[i] = 1;
   }
+
+  tk1Time = millis();
+  tk2Time = millis();
 
   Serial.println("Calibration done!");
 }
@@ -436,6 +441,7 @@ void loop()
   if (newBLERsp){
     bleResponse();
     newBLERsp = false;
+    return;
   }
 
   //Update the IMU with new data
@@ -507,6 +513,7 @@ void loop()
       tk1Time = millis();
       nextStep = false;
       Serial.println("TRACKER STEP 1");
+      return;
       //Serial.println(stepCount);
     } else {
       nextStep = true;
@@ -516,21 +523,50 @@ void loop()
 
   //Calculates speed and sends it to OpenVR if it is high enough
   if (trackerStep1 && trackerStep2){
+
+    static uint8_t nextStep = 0;
+
+    Serial.printf("NextStep is: %d\n", nextStep);
+    if (nextStep == 1 && trackerStep1 == false){
+      trackerStep2 = false;
+      return;
+    } else if (nextStep == 2 && trackerStep2 == false){
+      trackerStep1 = false;
+      return;
+    } else {
+      //Either is fine
+    }
+
     //Stop Timer
     startSleepTime = currTime;
     //unsigned long endTime = currTime;
     unsigned long timeDiff = max(tk1Time, tk2Time) - min(tk1Time, tk2Time);
 
+    Serial.println(tk1Time);
+    Serial.printf("Tracker 1 Time: %lu Tracker 2 Time: %lu\n", tk1Time, tk2Time);
+
     //Calculate freqeuncy of steps
-    float freq = 2/((float)timeDiff / 1000);
+    float freq = 1/((float)timeDiff / 1000.0f);
+    static float prevFreq = freq;
+    freq = min(10.0f, freq);
+    //freq = ((prevFreq < FREQ_MIN) || freq < (prevFreq * (1+FREQ_MAX_PER))) ? freq : prevFreq * (1+FREQ_MAX_PER);
+    prevFreq = freq;
     Serial.printf("Frequency: %f\n", freq);
-    float speed = 0.3871*freq - 0.1038;
+    float speed = 0.232*freq - 0.0137;
+
+    if (trackerStep1 == true){
+      nextStep = 2;
+    } else if (trackerStep2 == true){
+      nextStep = 1;
+    }
 
     //Reset step counter and timer
     stepCount = 0;
     resetTime = true;
     trackerStep1 = false;
     trackerStep2 = false;
+    // tk1Time = min(tk1Time, tk2Time) ;
+    // tk2Time = tk1Time;
 
     //Calculate speed between 0.0 and 1.0
     Serial.println(freq);
@@ -552,6 +588,7 @@ void loop()
       pCharacteristic_DRV->notify();
       Serial.println(tmp);
     } else {
+      nextStep = 0;
       //too slow, not sending
     }
   }  
