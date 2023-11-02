@@ -384,7 +384,7 @@ void setup()
 void loop() 
 {
   //Waits until bluetooth is connected
-  if (doConnect == true || connected == false) {
+  if (doConnect == true) {
     if (connectToServer()) {
       onePixel.setPixelColor(0, 0, 150, 200);//set to blueish green to indicate it is connected battery not yet checked
       onePixel.show();
@@ -416,7 +416,7 @@ void loop()
     cal.calibrate(gyro);
     prevReadingTime = millis();
     filter.update(gyro.gyro.x * SENSORS_RADS_TO_DPS, gyro.gyro.y * SENSORS_RADS_TO_DPS, gyro.gyro.z * SENSORS_RADS_TO_DPS, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
-    Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
+    //Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
     //if(connected){Serial.println("Connected " + connected);}
   }
 
@@ -439,8 +439,9 @@ void loop()
       onePixel.setPixelColor(0, 0, 0, 200);//blue
       onePixel.show();//update pixel
     }
+  } else if (doScan){
+    BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
   }
-
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
