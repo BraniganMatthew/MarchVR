@@ -61,7 +61,7 @@ async def main(): # This function loops for the duration the UI is open and hand
                 calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
                 calibrationCommand = calibrationCommand.encode('utf-8')
                 clientSocket.send(calibrationCommand)
-                print('Calibration command sent')
+                print('Calibration command sent: ' + str(calibrationCommand))
             # receive message
             data = clientSocket.recv(128).decode()
             if not data:
@@ -156,8 +156,8 @@ class Window(QMainWindow): # This is our actual window for the UI
 
         calButtonWidth = 100
         calButtonHeight = 40
-        calButtonX = 25
-        calButtonY = 100
+        calButtonX = 75
+        calButtonY = 120
   
         # setting geometry of button
         calButton.setGeometry(calButtonX, calButtonY, calButtonWidth, calButtonHeight)
@@ -165,39 +165,7 @@ class Window(QMainWindow): # This is our actual window for the UI
   
         # adding action to a button
         calButton.clicked.connect(self.clickCal)
-
-        # DISCONNECT BUTTON ---------------------------------------------------------------------------------
-
-        disconButton = QPushButton("Disconnect", self)
-
-        disconButtonWidth = 100
-        disconButtonHeight = 40
-        disconButtonX = 125
-        disconButtonY = 150
   
-        # setting geometry of button
-        disconButton.setGeometry(disconButtonX, disconButtonY, disconButtonWidth, disconButtonHeight)
-        disconButton.setStyleSheet("QPushButton{font-size: 12pt;}")
-  
-        # adding action to a button
-        disconButton.clicked.connect(self.clickDiscon)
-
-        # CONNECT BUTTON ---------------------------------------------------------------------------------
-
-        conButton = QPushButton("Connect", self)
-
-        conButtonWidth = 100
-        conButtonHeight = 40
-        conButtonX = 25
-        conButtonY = 150
-  
-        # setting geometry of button
-        conButton.setGeometry(conButtonX, conButtonY, conButtonWidth, conButtonHeight)
-        conButton.setStyleSheet("QPushButton{font-size: 12pt;}")
-  
-        # adding action to a button
-        conButton.clicked.connect(self.clickCon)
-
         # MAIN TEXT -------------------------------------------------------------------------------------
         mainX = winWidth/2 - 100
         mainY = 0
@@ -209,7 +177,7 @@ class Window(QMainWindow): # This is our actual window for the UI
         # WARNING TEXT -------------------------------------------------------------------------------------
         warningX = 0
         warningY = 35
-        warningText = QLabel("Stand still while calibrating.\nIf an error occurs, please restart MarchVR Hub.", self)
+        warningText = QLabel("Stand still while calibrating.\nPlease do not close MarchVR Hub while in-game.", self)
         warningText.setGeometry(warningX, warningY, 250, 50)
         warningText.setStyleSheet("QLabel{font-size: 8pt;}")
         warningText.setAlignment(QtCore.Qt.AlignCenter)
@@ -297,16 +265,6 @@ class Window(QMainWindow): # This is our actual window for the UI
         print("Recalibrate clicked")
         global calibrateFlag
         calibrateFlag = True
-
-    def clickCon(self): # Called when the connect button is clicked
-        print("Connect clicked")
-        global connectFlag
-        connectFlag = True
-
-    def clickDiscon(self): # Called when the connect button is clicked
-        print("Disconnect clicked")
-        global connectFlag
-        connectFlag = False
 
 # create pyqt5 app
 App = QApplication(sys.argv)
