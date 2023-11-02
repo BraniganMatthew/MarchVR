@@ -33,7 +33,7 @@ async def main(): # This function loops for the duration the UI is open and hand
     global movementString
     try:
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        clientSocket.connect(("localhost", 8080))
+        clientSocket.connect(("127.0.0.1", 8080))
         print('Connected to socket')
     except Exception as ex:
         template = "An exception of type {0} occurred when trying to connect. Arguments:\n{1!r}"
@@ -43,19 +43,13 @@ async def main(): # This function loops for the duration the UI is open and hand
     while (True):
         if (errorFlag):
             t1con.hide()
-            t2con.hide()
             t1discon.hide()
-            t2discon.hide()
             t1error.show()
-            t2error.show()
             break
         else:
             t1con.hide()
-            t2con.hide()
             t1discon.show()
-            t2discon.show()
             t1error.hide()
-            t2error.hide()
         try: 
             if (calibrateFlag):
                 calibrateFlag = False
@@ -67,16 +61,13 @@ async def main(): # This function loops for the duration the UI is open and hand
             # receive message
             data = clientSocket.recv(128).decode()
             t1con.show()
-            t2con.show()
             t1discon.hide()
-            t2discon.hide()
             t1error.hide()
-            t2error.hide()
             if not data:
                 continue
             else:
-                movementString = data
-            print("Received:", data)
+                movementString = str(data)
+            print("Received:", movementString)
         except Exception as ex:
             template = "An exception of type {0} occurred when trying to send/receive. Arguments:\n{1!r}"
             message = template.format(type(ex).__name__, ex.args)
@@ -224,7 +215,7 @@ class Window(QMainWindow): # This is our actual window for the UI
         # TRACKER 1 INFO --------------------------------------------------------------------------------
         t1x = 25
         t1y = 200
-        t1 = QLabel("Tracker 1: ", self)
+        t1 = QLabel("Trackers: ", self)
         t1.setGeometry(t1x, t1y, 200, 50)
         t1.setStyleSheet("QLabel{font-size: 12pt;}")
 
@@ -251,30 +242,9 @@ class Window(QMainWindow): # This is our actual window for the UI
         # TRACKER 2 INFO  -------------------------------------------------------------------------------
         t2x = 25
         t2y = 225
-        t2 = QLabel("Tracker 2: ", self)
+        t2 = QLabel("", self)
         t2.setGeometry(t2x, t2y, 200, 50)
         t2.setStyleSheet("QLabel{font-size: 12pt;}")
-
-        # connected text
-        global t2con
-        t2con = QLabel("Connected", self)
-        t2con.setGeometry(t2x + 70, t2y, 200, 50)
-        t2con.setStyleSheet("QLabel{font-size: 12pt; color: green}")
-        t2con.hide()
-
-        # not connected text
-        global t2discon
-        t2discon = QLabel("Disconnected", self)
-        t2discon.setGeometry(t2x + 70, t2y, 200, 50)
-        t2discon.setStyleSheet("QLabel{font-size: 12pt; color: red}")
-        t2discon.hide()
-
-        # error text
-        global t2error
-        t2error = QLabel("ERROR", self)
-        t2error.setGeometry(t2x + 70, t2y, 200, 50)
-        t2error.setStyleSheet("QLabel{font-size: 12pt; color: red}")
-        t2error.hide()
 
         # MOVEMENT DATA  -------------------------------------------------------------------------------
         global movementLabel
