@@ -34,6 +34,7 @@ async def main(): # This function loops for the duration the UI is open and hand
     try:
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientSocket.connect(("127.0.0.1", 8080))
+        clientSocket.settimeout(0.5)
         print('Connected to socket')
     except Exception as ex:
         template = "An exception of type {0} occurred when trying to connect. Arguments:\n{1!r}"
@@ -46,6 +47,10 @@ async def main(): # This function loops for the duration the UI is open and hand
             t1discon.hide()
             t1error.show()
             break
+        elif (connectFlag):
+            t1con.show()
+            t1discon.hide()
+            t1error.hide()
         else:
             t1con.hide()
             t1discon.show()
@@ -57,17 +62,14 @@ async def main(): # This function loops for the duration the UI is open and hand
                 calibrationCommand = calibrationCommand.encode('utf-8')
                 clientSocket.send(calibrationCommand)
                 print('Calibration command sent')
-
             # receive message
             data = clientSocket.recv(128).decode()
-            t1con.show()
-            t1discon.hide()
-            t1error.hide()
             if not data:
                 continue
             else:
                 movementString = str(data)
-            print("Received:", movementString)
+        except socket.timeout:
+            continue
         except Exception as ex:
             template = "An exception of type {0} occurred when trying to send/receive. Arguments:\n{1!r}"
             message = template.format(type(ex).__name__, ex.args)
@@ -281,9 +283,11 @@ class Window(QMainWindow): # This is our actual window for the UI
 
     def update(self): # Called once every "updateTime" ms to update the UI
         global movementString
+        global connectFlag
         movementList = movementString.split(";")
         if (len(movementList) >= 4):
             if (movementList[3] == "MOT"):
+                connectFlag = True
                 yawLabel.setText("Yaw: " + movementList[5])
                 pitchLabel.setText("Pitch: " + movementList[6])
                 rollLabel.setText("Roll: "  + movementList[7])
