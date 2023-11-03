@@ -11,7 +11,7 @@ GUI - Computer UI
 DRV - OpenVR Driver
 
 Commands{CMD}:
-CAL - Calibrate Ex: "%;GUI;TK1;CLE;0;{SUM}"
+CAL - Calibrate Ex: "%;GUI;TK1;CAL;0;{SUM}"
 MOT - Orientation & Speed Data Ex: "%;TK1;DRV;MOT;4;YAW;PITCH;ROLL;SPEED;{SUM}"
 BAT - Battery Data Ex: "%;TK2;GUI;BAT;2;VOLT;PERCENT;{SUM}"
 PWR - Power Saving Switch Ex: "%;GUI;TK1;PWR;1;ON/OFF;{SUM}"
