@@ -34,3 +34,5 @@ In order to make room for the addition of the magnetometer and stabilize all equ
 
 ## Release Candidate:
 [Demo Video]()
+
+[Timelog](https://docs.google.com/spreadsheets/d/1unugdZlc-4rDBkXROHAn1-_Av18swAkoabrYpZTAJ7A/edit?usp=sharing)
