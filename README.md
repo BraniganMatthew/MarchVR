@@ -30,7 +30,7 @@ In order to make room for the addition of the magnetometer and stabilize all equ
 ## Known Bugs
 - User must start up socket server manually when using SteamVR (issues have arisen when attemping to launch automatically from driver)
 - Closing the socket server during gameplay can cause the driver to crash
-- The improved casing is currently not implemented due to numerous 3D printing errors
+- The final iteration of the casing is currently not implemented due to numerous 3D printing errors
 
 ## Release Candidate:
 [Demo Video](https://youtu.be/IjgnNKbYWoc)
