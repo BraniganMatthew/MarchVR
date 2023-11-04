@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/4/2023 */
+/* Modified on: 11/1/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -11,8 +11,10 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <Adafruit_LSM6DS3TRC.h>
+#include <Adafruit_LIS3MDL.h>
 //#include <MadgwickAHRS.h>
 #include <Adafruit_AHRS.h>
+#include <Adafruit_Sensor_Calibration.h>
 #include <Vector.h>
 #include <Adafruit_NeoPixel.h>
 
@@ -29,6 +31,9 @@
 //VALUE DEFINES
 #define SMOOTHING_ALPHA 0.3f
 #define MAX_DATA_PARA   20
+#define VBATPIN A13
+#define FREQ_MAX_PER 0.50f
+#define FREQ_MIN 0.50f
 
 // Global Variables
 
@@ -59,13 +64,15 @@
 
   //Filtering and Frequency Variables
   float prevVal = 0.0f;
-  unsigned long startTime;
+  unsigned long tk1Time, tk2Time;
   bool resetTime = true;
 
   //IMU Oridentation Filtering
   Adafruit_LSM6DS3TRC lsm6ds3trc;
+  Adafruit_LIS3MDL lis3mdl;
   //Madgwick filter;
-  Adafruit_Mahony filter;
+  Adafruit_Madgwick filter;
+  Adafruit_Sensor_Calibration_EEPROM cal;
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -80,7 +87,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
       isConnected = true;
       BLEDevice::startAdvertising();
 
-      onePixel.setPixelColor(0, 0, 0, 200);//turn NeoPixel to blue to indicate it is connected
+      onePixel.setPixelColor(0, 0, 0, 200);//turn NeoPixel to blue to indicate it is connected, battery status not yet checked though
       onePixel.show();//update pixel
 
       Serial.println("Device Connected!");
@@ -150,13 +157,11 @@ bool assertCheckSum(Vector<String>* input)
 void calibrateTracker()
 {
 
-  lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
-  lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
+  // lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
+  // lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
 
-  filter.begin(26);
-
-  lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
-  lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
+  // lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
+  // lsm6ds3trc.setGyroDataRate(LSM6DS_RATE_26_HZ);
 
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
@@ -185,6 +190,9 @@ void calibrateTracker()
     else
       accelPos[i] = 1;
   }
+
+  tk1Time = millis();
+  tk2Time = millis();
 
   Serial.println("Calibration done!");
 }
@@ -233,6 +241,7 @@ void bleResponse()
   if (dst == "TK1"){
     if (src == "TK2"){
       trackerStep2 = true;
+      tk2Time = millis();
     } else if (src == "GUI") {
       if (cmd == "CAL"){
         //Send data with orienation to all connected devices
@@ -249,6 +258,20 @@ void bleResponse()
         pCharacteristic_TRK->setValue((uint8_t*)tmp_c, tmp.length());
         pCharacteristic_TRK->notify();
         calibrateTracker();
+
+        //Send orientation data back to driver
+        tmp.clear();
+        int speed = 0;
+        tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
+        Vector<String> splitTmp;
+        splitTmp.setStorage(BLE_RSP_ARRAY);
+        splitString(tmp, &splitTmp, ';');
+        tmp.remove(tmp.length()-1);
+        tmp = tmp + checkSumCalc(&splitTmp);
+        const char* tmp_c_2 = tmp.c_str();
+        pCharacteristic_DRV->setValue((uint8_t*)tmp_c_2, tmp.length());
+        pCharacteristic_DRV->notify();
+        Serial.println(tmp);
       }
 
     } else if (src == "DRV") {
@@ -312,7 +335,7 @@ void setup()
   onePixel.begin();
   onePixel.clear();
   onePixel.setBrightness(20);
-  onePixel.setPixelColor(0, 100, 200, 0); //set to yellow to indicate it is on
+  onePixel.setPixelColor(0, 200, 0, 0); //set to red to indicate it is on but not yet connected
   onePixel.show();
 
   //Setup BLE
@@ -383,7 +406,29 @@ void setup()
 
   Serial.println("LSM6DS3TR-C Found!");
 
+  if (! lis3mdl.begin_I2C()) {
+    Serial.println("Failed to find LIS3MDL chip");
+    while (1) { 
+      delay(10);
+    }
+  }
+
+  Serial.println("LIS3MDL Found!");
+
+  // lis3mdl.setPerformanceMode(LIS3MDL_MEDIUMMODE);
+  // lis3mdl.setOperationMode(LIS3MDL_CONTINUOUSMODE);
+  // lis3mdl.setDataRate(LIS3MDL_DATARATE_40_HZ);
+  // lis3mdl.setRange(LIS3MDL_RANGE_4_GAUSS);
+  // lis3mdl.setIntThreshold(500);
+  lis3mdl.configInterrupt(false, false, true, // enable z axis
+                          true, // polarity
+                          false, // don't latch
+                          true); // enabled!
+
+
   calibrateTracker();
+
+  filter.begin(100);
 
 }
 
@@ -394,15 +439,6 @@ void loop()
 
   unsigned long currTime = millis();
 
-  //Update the IMU with new data
-  static unsigned long prevTime = millis();
-  if (currTime - prevTime >= 20){
-    prevTime = currTime;
-    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-    filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
-    Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
-  }
- 
   //If a device disconnects
   if (!isConnected && prevConnected){
     delay(500); // give the bluetooth stack the chance to get things ready
@@ -419,13 +455,53 @@ void loop()
   if (newBLERsp){
     bleResponse();
     newBLERsp = false;
+    return;
+  }
+
+  //Update the IMU with new data
+  static unsigned long prevTime = millis();
+  if (currTime - prevTime < 10){
+    return;
+  } else {
+    sensors_event_t mag;
+    prevTime = currTime;
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+    lis3mdl.read(); 
+    lis3mdl.getEvent(&mag);
+    cal.calibrate(mag);
+    cal.calibrate(accel);
+    cal.calibrate(gyro);
+    filter.update(gyro.gyro.x * SENSORS_RADS_TO_DPS, gyro.gyro.y * SENSORS_RADS_TO_DPS, gyro.gyro.z * SENSORS_RADS_TO_DPS, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+    //Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
+    //Serial.printf("X: %f Y: %f Z: %f\n", mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+  }
+
+  //Check Battery and Change Battery Level
+  float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
+  if(isConnected){ // ensure we are connected
+    if (measuredvbat > 3.79f){
+      //High Battery
+      //Serial.println("High Battery!");
+      onePixel.setPixelColor(0, 0, 200, 0);//green
+      onePixel.show();
+    } else if (measuredvbat < 3.7f){
+      //Low Battery
+      //Serial.println("Low Battery!");
+      onePixel.setPixelColor(0, 100, 200, 0);//yellow
+      onePixel.show();
+    } else {
+      //Normal Battery
+      //Serial.println("Normal Battery!");
+      onePixel.setPixelColor(0, 0, 0, 200);//blue
+      onePixel.show();
+    }
   }
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
-  if (resetTime){
-    startTime = currTime;
-    resetTime = false;
-  }
+  // if (resetTime){
+  //   startTime = currTime;
+  //   resetTime = false;
+  // }
   
   //Applies IIR smoothing filter to acceleration
   float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
@@ -444,9 +520,14 @@ void loop()
     above = false;
     if (nextStep){
       //stepCount++;
+      // if (trackerStep2 ^ trackerStep1){
+      //   startTime = currTime;
+      // }
       trackerStep1 = true;
+      tk1Time = millis();
       nextStep = false;
       Serial.println("TRACKER STEP 1");
+      return;
       //Serial.println(stepCount);
     } else {
       nextStep = true;
@@ -456,21 +537,50 @@ void loop()
 
   //Calculates speed and sends it to OpenVR if it is high enough
   if (trackerStep1 && trackerStep2){
+
+    static uint8_t nextStep = 0;
+
+    Serial.printf("NextStep is: %d\n", nextStep);
+    if (nextStep == 1 && trackerStep1 == false){
+      trackerStep2 = false;
+      return;
+    } else if (nextStep == 2 && trackerStep2 == false){
+      trackerStep1 = false;
+      return;
+    } else {
+      //Either is fine
+    }
+
     //Stop Timer
     startSleepTime = currTime;
-    unsigned long endTime = currTime;
-    unsigned long timeDiff = endTime - startTime;
+    //unsigned long endTime = currTime;
+    unsigned long timeDiff = max(tk1Time, tk2Time) - min(tk1Time, tk2Time);
 
+    Serial.println(tk1Time);
+    Serial.printf("Tracker 1 Time: %lu Tracker 2 Time: %lu\n", tk1Time, tk2Time);
 
     //Calculate freqeuncy of steps
-    float freq = 2/((float)timeDiff / 1000);
-    float speed = 0.3871*freq - 0.1038;
+    float freq = 1/((float)timeDiff / 1000.0f);
+    static float prevFreq = freq;
+    freq = min(10.0f, freq);
+    //freq = ((prevFreq < FREQ_MIN) || freq < (prevFreq * (1+FREQ_MAX_PER))) ? freq : prevFreq * (1+FREQ_MAX_PER);
+    prevFreq = freq;
+    Serial.printf("Frequency: %f\n", freq);
+    float speed = 0.232*freq - 0.0137;
+
+    if (trackerStep1 == true){
+      nextStep = 2;
+    } else if (trackerStep2 == true){
+      nextStep = 1;
+    }
 
     //Reset step counter and timer
     stepCount = 0;
     resetTime = true;
     trackerStep1 = false;
     trackerStep2 = false;
+    // tk1Time = min(tk1Time, tk2Time) ;
+    // tk2Time = tk1Time;
 
     //Calculate speed between 0.0 and 1.0
     Serial.println(freq);
@@ -479,11 +589,6 @@ void loop()
     //Send to OpenVR drivers
     if (speed >= 0.1){
       Serial.println(speed);
-      //send to vr driver (sending as char string)
-      char buffer[5];
-      dtostrf(speed, 4, 2, buffer);
-      //SerialBT.write((uint8_t*)&buffer, sizeof(buffer));
-
       //Send data with orienation to the driver
       String tmp;
       tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
@@ -495,10 +600,9 @@ void loop()
       const char* tmp_c = tmp.c_str();
       pCharacteristic_DRV->setValue((uint8_t*)tmp_c, tmp.length());
       pCharacteristic_DRV->notify();
-      // pCharacteristic_GUI->setValue((uint8_t*)tmp_c, tmp.length());
-      // pCharacteristic_GUI->notify();
       Serial.println(tmp);
     } else {
+      nextStep = 0;
       //too slow, not sending
     }
   }  

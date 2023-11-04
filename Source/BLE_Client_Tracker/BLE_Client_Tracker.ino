@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/3/2023 */
+/* Modified on: 10/26/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -11,9 +11,13 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <Adafruit_LSM6DS3TRC.h>
-#include <MadgwickAHRS.h>
+#include <Adafruit_LIS3MDL.h>
+//#include <MadgwickAHRS.h>
+#include <Adafruit_AHRS.h>
+#include <Adafruit_Sensor_Calibration.h>
 #include <Vector.h>
 #include <Adafruit_NeoPixel.h>
+
 
 /* Checking if Bluetooth is properly enabled on esp32 */
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -28,6 +32,7 @@
 //VALUE DEFINES
 #define SMOOTHING_ALPHA 0.3f
 #define MAX_DATA_PARA   20
+#define VBATPIN A13
 
 // Global Variables
 
@@ -62,14 +67,19 @@
 
   //IMU Oridentation Filtering
   Adafruit_LSM6DS3TRC lsm6ds3trc;
-  Madgwick filter;
+  Adafruit_LIS3MDL lis3mdl;
+  //Madgwick filter;
+  Adafruit_Madgwick filter;
+  Adafruit_Sensor_Calibration_EEPROM cal;
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
   int loopDelay = 35; //milliseconds we delay at end of each loop
 
-  int wakePeriod = 30 * 60000; // the number of milliseconds we want to wait before entering sleep mode
+  int wakePeriod = 45 * 60000; // the number of milliseconds we want to wait before entering sleep mode
+  unsigned long startSleepTime = millis(); //get current time to later determine if we timed out for sleep
+  unsigned long currentSleepTime; // another value we will use for comparison later on for determining sleep
   int timeLeftToLive = wakePeriod; // variable we will manipulate to actually track it
 
 //Classes
@@ -96,7 +106,7 @@ class MyClientCallback : public BLEClientCallbacks {
   void onDisconnect(BLEClient* pclient) {
     connected = false;
 
-    onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is disconnected
+    onePixel.setPixelColor(0, 200, 0, 0);//set to red to indicate it is disconnected
     onePixel.show();
 
     Serial.println("onDisconnect");
@@ -132,8 +142,6 @@ void calibrateTracker()
     else
       accelPos[i] = 1;
   }
-
-  filter.begin(26);
 
   Serial.println("Calibration done!");
 }
@@ -243,6 +251,7 @@ bool connectToServer() {
     // Connect to the remove BLE Server.
     pClient->connect(myDevice);  // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
     Serial.println(" - Connected to server");
+    connected = true;
     pClient->setMTU(517); //set client to request maximum MTU from server (default is 23 otherwise)
   
     // Obtain a reference to the service we are after in the remote BLE server.
@@ -331,7 +340,7 @@ void setup()
   onePixel.begin();
   onePixel.clear();
   onePixel.setBrightness(20);
-  onePixel.setPixelColor(0, 200, 200, 0);//set to yellow to indicate it is on but not connected
+  onePixel.setPixelColor(0, 200, 0, 0);//set to red to indicate it is on but not connected
   onePixel.show();
 
   //Find IMU
@@ -344,6 +353,16 @@ void setup()
 
   Serial.println("LSM6DS3TR-C Found!");
 
+
+  if (! lis3mdl.begin_I2C()) {
+    Serial.println("Failed to find LIS3MDL chip");
+    while (1) { 
+      delay(10);
+    }
+  }
+
+  Serial.println("LIS3MDL Found!");
+
   lsm6ds3trc.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
   lsm6ds3trc.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
   lsm6ds3trc.setAccelDataRate(LSM6DS_RATE_26_HZ);
@@ -352,30 +371,29 @@ void setup()
   lsm6ds3trc.configInt1(false, false, true); // accelerometer DRDY on INT1
   lsm6ds3trc.configInt2(false, true, false); // gyro DRDY on INT2
 
+  lis3mdl.configInterrupt(false, false, true, // enable z axis
+                        true, // polarity
+                        false, // don't latch
+                        true); // enabled!
+
   calibrateTracker();
+
+  filter.begin(100);
 }
 
 void loop() 
 {
   //Waits until bluetooth is connected
-  if (doConnect == true || connected == false) {
+  if (doConnect == true) {
     if (connectToServer()) {
-      onePixel.setPixelColor(0, 0, 0, 200);//set to blue to indicate it is connected
+      onePixel.setPixelColor(0, 0, 150, 200);//set to blueish green to indicate it is connected battery not yet checked
       onePixel.show();
       Serial.println("We are now connected to the BLE Server.");
+      connected = true;
     } else {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");
     }
     doConnect = false;
-  }
-
-  sensors_event_t accel, gyro, temp;
-  lsm6ds3trc.getEvent(&accel, &gyro, &temp);
-  static unsigned long prevReadingTime = millis();
-
-  if (millis() - prevReadingTime >= 20){
-    prevReadingTime = millis();
-    filter.updateIMU(gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
   }
 
   if (newBLERsp){
@@ -383,6 +401,47 @@ void loop()
     newBLERsp = false;
   }
 
+  
+  static unsigned long prevReadingTime = millis();
+  sensors_event_t accel, gyro, temp;
+  if (millis() - prevReadingTime < 10){
+    return;
+  } else {
+    sensors_event_t mag;
+    lsm6ds3trc.getEvent(&accel, &gyro, &temp);
+    lis3mdl.read(); 
+    lis3mdl.getEvent(&mag);
+    cal.calibrate(mag);
+    cal.calibrate(accel);
+    cal.calibrate(gyro);
+    prevReadingTime = millis();
+    filter.update(gyro.gyro.x * SENSORS_RADS_TO_DPS, gyro.gyro.y * SENSORS_RADS_TO_DPS, gyro.gyro.z * SENSORS_RADS_TO_DPS, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+    //Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
+    //if(connected){Serial.println("Connected " + connected);}
+  }
+
+  //Check Battery and Change Battery Level
+  float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
+  if(connected){ // ensure we are connected
+    if (measuredvbat > 3.79f){
+      //High Battery
+      //Serial.println("High Battery!");
+      onePixel.setPixelColor(0, 0, 200, 0);//green
+      onePixel.show();//update pixel
+    } else if (measuredvbat < 3.7f){
+      //Low Battery
+      //Serial.println("Low Battery!");
+      onePixel.setPixelColor(0, 100, 200, 0);//yellow
+      onePixel.show();//update pixel
+    } else {
+      //Normal Battery
+      //Serial.println("Normal Battery!");
+      onePixel.setPixelColor(0, 0, 0, 200);//blue
+      onePixel.show();//update pixel
+    }
+  } else if (doScan){
+    BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
+  }
 
   //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
   if (resetTime){
@@ -417,9 +476,15 @@ void loop()
       Serial.println(tmp);
       if (connected)
         pRemoteCharacteristic->writeValue(tmp.c_str(), tmp.length());
+
+      startSleepTime = millis();
     } else {
       nextStep = true;
     }
+  }
 
+  //Added backup timer to make sure that the client will fall asleep without a connection to the server
+  if(millis() - startSleepTime > wakePeriod){
+    enterSleep();
   }
 }
