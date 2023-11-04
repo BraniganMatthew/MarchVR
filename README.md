@@ -33,6 +33,6 @@ In order to make room for the addition of the magnetometer and stabilize all equ
 - The improved casing is currently not implemented due to numerous 3D printing errors
 
 ## Release Candidate:
-[Demo Video]()
+[Demo Video](https://youtu.be/IjgnNKbYWoc)
 
 [Timelog](https://docs.google.com/spreadsheets/d/1unugdZlc-4rDBkXROHAn1-_Av18swAkoabrYpZTAJ7A/edit?usp=sharing)
