@@ -258,6 +258,20 @@ void bleResponse()
         pCharacteristic_TRK->setValue((uint8_t*)tmp_c, tmp.length());
         pCharacteristic_TRK->notify();
         calibrateTracker();
+
+        //Send orientation data back to driver
+        tmp.clear();
+        int speed = 0;
+        tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
+        Vector<String> splitTmp;
+        splitTmp.setStorage(BLE_RSP_ARRAY);
+        splitString(tmp, &splitTmp, ';');
+        tmp.remove(tmp.length()-1);
+        tmp = tmp + checkSumCalc(&splitTmp);
+        const char* tmp_c_2 = tmp.c_str();
+        pCharacteristic_DRV->setValue((uint8_t*)tmp_c_2, tmp.length());
+        pCharacteristic_DRV->notify();
+        Serial.println(tmp);
       }
 
     } else if (src == "DRV") {
