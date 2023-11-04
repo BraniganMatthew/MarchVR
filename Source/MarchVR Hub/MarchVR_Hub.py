@@ -6,26 +6,16 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import sys
 import asyncio
-from bleak import BleakClient, BleakScanner
+import socket
 
 calibrateFlag = False
 connectFlag = False
-disconnectFlag = True
 errorFlag = False
 
 serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 characteristicUUID = "22d7a034-791d-49f6-a84e-ef78ab2473ad"
 
-def listToString(inputList): # Helps turn a byte stream into a string of characters
-    outputString = ""
-    for i in inputList:
-        outputString += chr(i)
-    return outputString
-
 movementString = ""
-def notification_handler(sender, data): # Called when we are notified by a tracker via BLE
-            global movementString
-            movementString = listToString(list(data))
 
 winWidth = 250
 winHeight = 400
@@ -37,57 +27,56 @@ updateTime = 1000 # in milliseconds - update our UI once every "updateTime" ms
 sum = 0
 
 async def main(): # This function loops for the duration the UI is open and handles BLE communication
+    global connectFlag
+    global errorFlag
+    global calibrateFlag
+    global movementString
+    try:
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        clientSocket.connect(("127.0.0.1", 8080))
+        clientSocket.settimeout(0.5)
+        print('Connected to socket')
+    except Exception as ex:
+        template = "An exception of type {0} occurred when trying to connect. Arguments:\n{1!r}"
+        message = template.format(type(ex).__name__, ex.args)
+        print(message)
+        errorFlag = True
     while (True):
-        global errorFlag
         if (errorFlag):
-            t1error.show()
-            t2error.show()
             t1con.hide()
-            t2con.hide()
             t1discon.hide()
-            t2discon.hide()
-            continue
+            t1error.show()
+            break
         elif (connectFlag):
-            scanner = BleakScanner(service_uuids=serviceUUID, winrt=dict(use_cached_services=False))
-            server = await scanner.find_device_by_name("ESP32")
-            if (server == None): 
-                await asyncio.sleep(10)
+            t1con.show()
+            t1discon.hide()
+            t1error.hide()
+        else:
+            t1con.hide()
+            t1discon.show()
+            t1error.hide()
+        try: 
+            if (calibrateFlag):
+                calibrateFlag = False
+                calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
+                calibrationCommand = calibrationCommand.encode('utf-8')
+                clientSocket.send(calibrationCommand)
+                print('Calibration command sent: ' + str(calibrationCommand))
+            # receive message
+            data = clientSocket.recv(128).decode()
+            if not data:
                 continue
             else:
-                t1con.show()
-                t2con.show()
-                t1discon.hide()
-                t2discon.hide()
-            try:
-                async with BleakClient(server) as client:
-                    await client.start_notify(characteristicUUID, notification_handler)
-                    while(True):
-                        global calibrateFlag
-                        if (calibrateFlag and connectFlag):
-                            print("Calibrating")
-                            calibrateFlag = 0
-                            calibrationCommand = "%;GUI;TK1;CAL;0;" + str(sum)
-                            calibrationCommand = calibrationCommand.encode('utf-8')
-                            await client.write_gatt_char(characteristicUUID, bytearray(calibrationCommand), response=True)
-                        elif (calibrateFlag and disconnectFlag):
-                            print("Error: Calibrate command sent while disconnected")
-                        elif (disconnectFlag):
-                            print("Disconnected")
-                            if (server != None):
-                                await client.disconnect()
-                            break
-                        await asyncio.sleep(1)
-            except Exception as ex:
-                template = "An exception of type {0} occurred. Arguments:\n{1!r}"
-                message = template.format(type(ex).__name__, ex.args)
-                print(message)
-                errorFlag = True
-                continue
-        else:
-            t1disconnecting.hide()
-            t2disconnecting.hide()
-            t1discon.show()
-            t2discon.show()
+                movementString = str(data)
+        except socket.timeout:
+            continue
+        except Exception as ex:
+            template = "An exception of type {0} occurred when trying to send/receive. Arguments:\n{1!r}"
+            message = template.format(type(ex).__name__, ex.args)
+            print(message)
+            errorFlag = True
+            connectFlag = False
+            break # Break to force reconnect
 
 
 class Worker(QtCore.QObject): # This class and its function help set up/enable threading
@@ -167,8 +156,8 @@ class Window(QMainWindow): # This is our actual window for the UI
 
         calButtonWidth = 100
         calButtonHeight = 40
-        calButtonX = 25
-        calButtonY = 100
+        calButtonX = 75
+        calButtonY = 120
   
         # setting geometry of button
         calButton.setGeometry(calButtonX, calButtonY, calButtonWidth, calButtonHeight)
@@ -176,39 +165,7 @@ class Window(QMainWindow): # This is our actual window for the UI
   
         # adding action to a button
         calButton.clicked.connect(self.clickCal)
-
-        # DISCONNECT BUTTON ---------------------------------------------------------------------------------
-
-        disconButton = QPushButton("Disconnect", self)
-
-        disconButtonWidth = 100
-        disconButtonHeight = 40
-        disconButtonX = 125
-        disconButtonY = 150
   
-        # setting geometry of button
-        disconButton.setGeometry(disconButtonX, disconButtonY, disconButtonWidth, disconButtonHeight)
-        disconButton.setStyleSheet("QPushButton{font-size: 12pt;}")
-  
-        # adding action to a button
-        disconButton.clicked.connect(self.clickDiscon)
-
-        # CONNECT BUTTON ---------------------------------------------------------------------------------
-
-        conButton = QPushButton("Connect", self)
-
-        conButtonWidth = 100
-        conButtonHeight = 40
-        conButtonX = 25
-        conButtonY = 150
-  
-        # setting geometry of button
-        conButton.setGeometry(conButtonX, conButtonY, conButtonWidth, conButtonHeight)
-        conButton.setStyleSheet("QPushButton{font-size: 12pt;}")
-  
-        # adding action to a button
-        conButton.clicked.connect(self.clickCon)
-
         # MAIN TEXT -------------------------------------------------------------------------------------
         mainX = winWidth/2 - 100
         mainY = 0
@@ -220,7 +177,7 @@ class Window(QMainWindow): # This is our actual window for the UI
         # WARNING TEXT -------------------------------------------------------------------------------------
         warningX = 0
         warningY = 35
-        warningText = QLabel("Stand still while calibrating.\nIf an error occurs, please restart MarchVR Hub.", self)
+        warningText = QLabel("Stand still while calibrating.\nPlease do not close MarchVR Hub while in-game.", self)
         warningText.setGeometry(warningX, warningY, 250, 50)
         warningText.setStyleSheet("QLabel{font-size: 8pt;}")
         warningText.setAlignment(QtCore.Qt.AlignCenter)
@@ -228,7 +185,7 @@ class Window(QMainWindow): # This is our actual window for the UI
         # TRACKER 1 INFO --------------------------------------------------------------------------------
         t1x = 25
         t1y = 200
-        t1 = QLabel("Tracker 1: ", self)
+        t1 = QLabel("Trackers: ", self)
         t1.setGeometry(t1x, t1y, 200, 50)
         t1.setStyleSheet("QLabel{font-size: 12pt;}")
 
@@ -245,13 +202,6 @@ class Window(QMainWindow): # This is our actual window for the UI
         t1discon.setGeometry(t1x + 70, t1y, 200, 50)
         t1discon.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
 
-        # not connected text
-        global t1disconnecting
-        t1disconnecting = QLabel("Disconnecting...", self)
-        t1disconnecting.setGeometry(t1x + 70, t1y, 200, 50)
-        t1disconnecting.setStyleSheet("QLabel{font-size: 12pt; color: red;}")
-        t1disconnecting.hide()
-
         # error text
         global t1error
         t1error = QLabel("ERROR", self)
@@ -262,37 +212,9 @@ class Window(QMainWindow): # This is our actual window for the UI
         # TRACKER 2 INFO  -------------------------------------------------------------------------------
         t2x = 25
         t2y = 225
-        t2 = QLabel("Tracker 2: ", self)
+        t2 = QLabel("", self)
         t2.setGeometry(t2x, t2y, 200, 50)
         t2.setStyleSheet("QLabel{font-size: 12pt;}")
-
-        # connected text
-        global t2con
-        t2con = QLabel("Connected", self)
-        t2con.setGeometry(t2x + 70, t2y, 200, 50)
-        t2con.setStyleSheet("QLabel{font-size: 12pt; color: green}")
-        t2con.hide()
-
-        # not connected text
-        global t2discon
-        t2discon = QLabel("Disconnected", self)
-        t2discon.setGeometry(t2x + 70, t2y, 200, 50)
-        t2discon.setStyleSheet("QLabel{font-size: 12pt; color: red}")
-        t2discon.hide()
-
-         # not connected text
-        global t2disconnecting
-        t2disconnecting = QLabel("Disconnecting...", self)
-        t2disconnecting.setGeometry(t2x + 70, t2y, 200, 50)
-        t2disconnecting.setStyleSheet("QLabel{font-size: 12pt; color: red}")
-        t2disconnecting.hide()
-
-        # error text
-        global t2error
-        t2error = QLabel("ERROR", self)
-        t2error.setGeometry(t2x + 70, t2y, 200, 50)
-        t2error.setStyleSheet("QLabel{font-size: 12pt; color: red}")
-        t2error.hide()
 
         # MOVEMENT DATA  -------------------------------------------------------------------------------
         global movementLabel
@@ -329,9 +251,11 @@ class Window(QMainWindow): # This is our actual window for the UI
 
     def update(self): # Called once every "updateTime" ms to update the UI
         global movementString
+        global connectFlag
         movementList = movementString.split(";")
         if (len(movementList) >= 4):
             if (movementList[3] == "MOT"):
+                connectFlag = True
                 yawLabel.setText("Yaw: " + movementList[5])
                 pitchLabel.setText("Pitch: " + movementList[6])
                 rollLabel.setText("Roll: "  + movementList[7])
@@ -341,24 +265,6 @@ class Window(QMainWindow): # This is our actual window for the UI
         print("Recalibrate clicked")
         global calibrateFlag
         calibrateFlag = True
-
-    def clickCon(self): # Called when the connect button is clicked
-        print("Connect clicked")
-        global connectFlag
-        connectFlag = True
-        global disconnectFlag
-        disconnectFlag = False
-
-    def clickDiscon(self): # Called when the connect button is clicked
-        print("Disconnect clicked")
-        global connectFlag
-        connectFlag = False
-        global disconnectFlag
-        disconnectFlag = True
-        t1con.hide()
-        t2con.hide()
-        t1disconnecting.show()
-        t2disconnecting.show()
 
 # create pyqt5 app
 App = QApplication(sys.argv)
