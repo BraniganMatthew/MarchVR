@@ -4,10 +4,10 @@
 After switching to Bluetooth Low Energy in the Beta build, the next priority was to get everything working on a single device. A large roadblock that was experienced during the Beta build was that the MarchVR Hub and OpenVR driver was not able to be run on the same device due to attempting to utilize the same Bluetooth hardware. This was remedied in this milestone by finally implementing a socket server application that would handle all Bluetooth communication with the trackers and simply distribute the received data to the driver and Hub. The usability of the trackers was greatly improved in this milestone as well through the improvement of the status LEDs on the trackers, improved 3D printed casings, a robust auto-reconnect function for both the socket application and trackers, and the full implementation of a magnetometer on each tracker to determine orientation.
 
 ### MarchVR Trackers
-![March VR Trackers](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Trackers.png)
+![March VR Trackers](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Trackers2.png)
 
 ### MarchVR Hub GUI Application
-![March VR Hub](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Hub.png)
+![March VR Hub](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Hub2.png)
 
 ## Project Architecture
 ### Release Candidate
