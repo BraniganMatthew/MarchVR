@@ -77,7 +77,7 @@
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
-  int wakePeriod = 1 * 60000; // 30 minutes ... the number of milliseconds we want to wait before entering sleep mode
+  int wakePeriod = 20 * 60000; // 20 minutes ... the number of milliseconds we want to wait before entering sleep mode
   unsigned long startSleepTime = millis(); //get current time to later determine if we timed out for sleep
   unsigned long currentSleepTime; // another value we will use for comparison later on for determining sleep
 
