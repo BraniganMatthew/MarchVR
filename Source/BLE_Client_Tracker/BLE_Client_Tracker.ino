@@ -326,6 +326,13 @@ void setup()
   // Setup serial debugging
   Serial.begin(115200);
 
+  // Setup the NeoPixel -  Doing this sooner in setup() so we know it is on
+  onePixel.begin();
+  onePixel.clear();
+  onePixel.setBrightness(20);
+  onePixel.setPixelColor(0, 200, 0, 0);//set to red to indicate it is on but not connected
+  onePixel.show();
+
   //Setup BLE
   BLEDevice::init("MarchVR BLE Client Tracker");
 
@@ -335,13 +342,6 @@ void setup()
   pBLEScan->setWindow(449);
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
-
-  // Setup the NeoPixel
-  onePixel.begin();
-  onePixel.clear();
-  onePixel.setBrightness(20);
-  onePixel.setPixelColor(0, 200, 0, 0);//set to red to indicate it is on but not connected
-  onePixel.show();
 
   //Find IMU
   if (!lsm6ds3trc.begin_I2C()) {
@@ -426,12 +426,12 @@ void loop()
     if (measuredvbat > 3.79f){
       //High Battery
       //Serial.println("High Battery!");
-      onePixel.setPixelColor(0, 0, 200, 0);//green
+      onePixel.setPixelColor(0, 0, 250, 0);//green
       onePixel.show();//update pixel
-    } else if (measuredvbat < 3.7f){
+    } else if (measuredvbat < 3.6f){
       //Low Battery
       //Serial.println("Low Battery!");
-      onePixel.setPixelColor(0, 100, 200, 0);//yellow
+      onePixel.setPixelColor(0, 90, 200, 0);//yellow
       onePixel.show();//update pixel
     } else {
       //Normal Battery

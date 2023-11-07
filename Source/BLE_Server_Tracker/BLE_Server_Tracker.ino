@@ -77,7 +77,7 @@
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
-  int wakePeriod = 30 * 60000; // 30 minutes ... the number of milliseconds we want to wait before entering sleep mode
+  int wakePeriod = 1 * 60000; // 30 minutes ... the number of milliseconds we want to wait before entering sleep mode
   unsigned long startSleepTime = millis(); //get current time to later determine if we timed out for sleep
   unsigned long currentSleepTime; // another value we will use for comparison later on for determining sleep
 
@@ -482,12 +482,12 @@ void loop()
     if (measuredvbat > 3.79f){
       //High Battery
       //Serial.println("High Battery!");
-      onePixel.setPixelColor(0, 0, 200, 0);//green
+      onePixel.setPixelColor(0, 0, 250, 0);//green
       onePixel.show();
-    } else if (measuredvbat < 3.7f){
+    } else if (measuredvbat < 3.6f){
       //Low Battery
       //Serial.println("Low Battery!");
-      onePixel.setPixelColor(0, 100, 200, 0);//yellow
+      onePixel.setPixelColor(0, 90, 200, 0);//yellow
       onePixel.show();
     } else {
       //Normal Battery
