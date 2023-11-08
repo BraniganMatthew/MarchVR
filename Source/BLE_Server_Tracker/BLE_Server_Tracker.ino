@@ -73,6 +73,7 @@
   //Madgwick filter;
   Adafruit_Madgwick filter;
   Adafruit_Sensor_Calibration_EEPROM cal;
+  float tk2Ori[3] = {0.0f, 0.0f, 0.0f};
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -240,6 +241,10 @@ void bleResponse()
   //If to server
   if (dst == "TK1"){
     if (src == "TK2"){
+      tk2Ori[0] = splitVal.at(5).toFloat();
+      tk2Ori[1] = splitVal.at(6).toFloat();
+      tk2Ori[2] = splitVal.at(7).toFloat();
+
       trackerStep2 = true;
       tk2Time = millis();
     } else if (src == "GUI") {
@@ -589,9 +594,11 @@ void loop()
     //Send to OpenVR drivers
     if (speed >= 0.1){
       Serial.println(speed);
+      float yawAvg = (filter.getYawRadians() + tk2Ori[0])/2;
+      float rollLow = min(filter.getRollRadians(), -1 * tk2Ori[2]);
       //Send data with orienation to the driver
       String tmp;
-      tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
+      tmp = tmp + "%;TK1;DRV;MOT;4;" + yawAvg + ";" + filter.getPitchRadians() + ";" + rollLow + ";" + speed + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');
