@@ -77,10 +77,12 @@
 
   int loopDelay = 35; //milliseconds we delay at end of each loop
 
-  int wakePeriod = 45 * 60000; // the number of milliseconds we want to wait before entering sleep mode
+  int wakePeriod = 25 * 60000; // 25 minutes ... the number of milliseconds we want to wait before entering sleep mode
   unsigned long startSleepTime = millis(); //get current time to later determine if we timed out for sleep
-  unsigned long currentSleepTime; // another value we will use for comparison later on for determining sleep
-  int timeLeftToLive = wakePeriod; // variable we will manipulate to actually track it
+
+  int batteryCheckPeriod = .5 * 60000; // 30 seconds ... the number of ms we want to wait before checking battery
+  unsigned long startBatteryTime = millis(); // get current time to later determine if time to check
+  float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f; // checks battery level
 
 //Classes
 
@@ -253,7 +255,6 @@ bool connectToServer() {
     Serial.println(" - Connected to server");
     connected = true;
     pClient->setMTU(517); //set client to request maximum MTU from server (default is 23 otherwise)
-  
     // Obtain a reference to the service we are after in the remote BLE server.
     BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
     if (pRemoteService == nullptr) {
@@ -421,7 +422,11 @@ void loop()
   }
 
   //Check Battery and Change Battery Level
-  float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
+  if(millis() - startBatteryTime >  batteryCheckPeriod){ //only check once every batteryCheckPeriod
+    measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
+    startBatteryTime = millis();
+    Serial.println("Checking");
+  }
   if(connected){ // ensure we are connected
     if (measuredvbat > 3.79f){
       //High Battery
@@ -431,7 +436,7 @@ void loop()
     } else if (measuredvbat < 3.6f){
       //Low Battery
       //Serial.println("Low Battery!");
-      onePixel.setPixelColor(0, 90, 200, 0);//yellow
+      onePixel.setPixelColor(255, 165, 0, 0);//orange
       onePixel.show();//update pixel
     } else {
       //Normal Battery

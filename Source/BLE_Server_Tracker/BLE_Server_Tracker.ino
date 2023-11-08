@@ -79,7 +79,10 @@
 
   int wakePeriod = 20 * 60000; // 20 minutes ... the number of milliseconds we want to wait before entering sleep mode
   unsigned long startSleepTime = millis(); //get current time to later determine if we timed out for sleep
-  unsigned long currentSleepTime; // another value we will use for comparison later on for determining sleep
+
+  int batteryCheckPeriod = .5 * 60000; // 30 seconds ... the number of ms we want to wait before checking the battery
+  unsigned long startBatteryTime = millis(); // get current time to later determine if time to check
+  float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;// checks battery level
 
 //Classes
 class MyServerCallbacks: public BLEServerCallbacks {
@@ -338,6 +341,8 @@ void setup()
   onePixel.setPixelColor(0, 200, 0, 0); //set to red to indicate it is on but not yet connected
   onePixel.show();
 
+  
+
   //Setup BLE
   //BLEDevice::init("MarchVR BLE Server Tracker");
   BLEDevice::init("ESP32");
@@ -477,7 +482,10 @@ void loop()
   }
 
   //Check Battery and Change Battery Level
-  float measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
+  if(currTime - startBatteryTime >  batteryCheckPeriod){ //only check once every batteryCheckPeriod
+    measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
+    startBatteryTime = currTime;
+  }
   if(isConnected){ // ensure we are connected
     if (measuredvbat > 3.79f){
       //High Battery
@@ -487,7 +495,7 @@ void loop()
     } else if (measuredvbat < 3.6f){
       //Low Battery
       //Serial.println("Low Battery!");
-      onePixel.setPixelColor(0, 90, 200, 0);//yellow
+      onePixel.setPixelColor(255, 165, 0, 0);//orange
       onePixel.show();
     } else {
       //Normal Battery
