@@ -1,0 +1,12 @@
+﻿  Socket-Server.cpp
+C:\Users\pjenn\OneDrive\Desktop\school\sp23\cpedes\MarchVR\MarchVR\Socket-Server\Socket-Server\Socket-Server.cpp(280,42): warning C4244: 'argument': conversion from 'SOCKET' to 'int', possible loss of data
+C:\Users\pjenn\OneDrive\Desktop\school\sp23\cpedes\MarchVR\MarchVR\Socket-Server\Socket-Server\Socket-Server.cpp(297,106): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\pjenn\OneDrive\Desktop\school\sp23\cpedes\MarchVR\MarchVR\Socket-Server\Socket-Server\Socket-Server.cpp(301,97): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+  utils.cpp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+C:\Users\pjenn\OneDrive\Desktop\school\sp23\cpedes\MarchVR\MarchVR\Socket-Server\Socket-Server\Socket-Server.cpp(57): warning C4715: 'search_for_esp32_and_connect_by_service': not all control paths return a value
+C:\Users\pjenn\OneDrive\Desktop\school\sp23\cpedes\MarchVR\MarchVR\Socket-Server\Socket-Server\Socket-Server.cpp(141): warning C4715: 'connect_to_esp_via_ble': not all control paths return a value
+  All 593 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Socket-Server.vcxproj -> C:\Users\pjenn\OneDrive\Desktop\school\sp23\cpedes\MarchVR\MarchVR\Socket-Server\x64\Release\Socket-Server.exe
