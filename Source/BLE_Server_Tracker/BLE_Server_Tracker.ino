@@ -61,6 +61,7 @@
   float accelAvg[3];
   short accelPos[3];
   unsigned int up = 0;
+  bool sendCali = false;
 
   //Filtering and Frequency Variables
   float prevVal = 0.0f;
@@ -265,18 +266,7 @@ void bleResponse()
         calibrateTracker();
 
         //Send orientation data back to driver
-        tmp.clear();
-        int speed = 0;
-        tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
-        Vector<String> splitTmp;
-        splitTmp.setStorage(BLE_RSP_ARRAY);
-        splitString(tmp, &splitTmp, ';');
-        tmp.remove(tmp.length()-1);
-        tmp = tmp + checkSumCalc(&splitTmp);
-        const char* tmp_c_2 = tmp.c_str();
-        pCharacteristic_DRV->setValue((uint8_t*)tmp_c_2, tmp.length());
-        pCharacteristic_DRV->notify();
-        Serial.println(tmp);
+        sendCali = true;
       }
 
     } else if (src == "DRV") {
@@ -520,10 +510,10 @@ void loop()
   }
 
   //Increaments step counter if user has done a full step
-  if (above && below){
+  if ((above && below) || sendCali){
     below = false;
     above = false;
-    if (nextStep){
+    if (nextStep || sendCali){
       //stepCount++;
       // if (trackerStep2 ^ trackerStep1){
       //   startTime = currTime;
@@ -532,7 +522,7 @@ void loop()
       tk1Time = millis();
       nextStep = false;
       Serial.println("TRACKER STEP 1");
-      return;
+      //return;
       //Serial.println(stepCount);
     } else {
       nextStep = true;
@@ -589,16 +579,22 @@ void loop()
 
     //Calculate speed between 0.0 and 1.0
     Serial.println(freq);
-    
 
     //Send to OpenVR drivers
-    if (speed >= 0.1){
+    if (speed >= 0.1 || sendCali){
+      if (sendCali == true){
+        speed = 0.0f;
+        sendCali = false;
+      }
       Serial.println(speed);
-      float yawAvg = (filter.getYawRadians() + tk2Ori[0])/2;
-      float rollLow = min(filter.getRollRadians(), -1 * tk2Ori[2]);
+      float qx, qy, qz, qw;
+      //filter.getQuaternion(&qw, &qx, &qy, &qz);
+      qy = filter.getYawRadians() / 3.1415926f;
+      float yawAvg = (qy + tk2Ori[0])/2;
+      float rollLow = min(qz, -1 * tk2Ori[2]);
       //Send data with orienation to the driver
       String tmp;
-      tmp = tmp + "%;TK1;DRV;MOT;4;" + yawAvg + ";" + filter.getPitchRadians() + ";" + rollLow + ";" + speed + ";0";
+      tmp = tmp + "%;TK1;DRV;MOT;4;" + qy + ";" + qx + ";" + qz + ";" + speed + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');
