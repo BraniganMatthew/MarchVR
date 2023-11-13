@@ -1,40 +1,38 @@
 # MarchVR
-## Completed Work 
-### Beta Build
-After switching from Bluetooth Classic to Bluetooth Low Energy (BLE) in the Alpha build, the Beta build has largely focused on expanding the functionality of the project, moving on from the "vertical slice" of the Alpha. The GUI application, MarchVR Hub, has a simplistic UI that allows a user to easily manage the connection and calibration of the trackers. The OpenVR driver now features less latency than ever before after switching to BLE. Through the alpha test plan, however, it was discovered that the MarchVR Hub and OpenVR driver cannot be connected at the same time on the same device, due to both functioning as BLE clients and utilizing the same Bluetooth hardware. Thus, it has been determined that the two must be integrated in the form of a socket server such that only one BLE client is active on a user's PC at any given time. A sleep mode feature for the trackers has also been implemented to extend the battery life of the trackers. After initial testing following the alpha test plan, it was determined that the trackers have a battery life of about 10 hours, which is more than enough for a VR gameplay session.
+## Milestone Summary
+### Release Candidate
+After switching to Bluetooth Low Energy in the Beta build, the next priority was to get everything working on a single device. A large roadblock that was experienced during the Beta build was that the MarchVR Hub and OpenVR driver was not able to be run on the same device due to attempting to utilize the same Bluetooth hardware. This was remedied in this milestone by finally implementing a socket server application that would handle all Bluetooth communication with the trackers and simply distribute the received data to the driver and Hub. The usability of the trackers was greatly improved in this milestone as well through the improvement of the status LEDs on the trackers, improved 3D printed casings, a robust auto-reconnect function for both the socket application and trackers, and the full implementation of a magnetometer on each tracker to determine orientation.
 
 ### MarchVR Trackers
-![March VR Trackers](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Trackers.png)
+![March VR Trackers](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Trackers2.png)
 
 ### MarchVR Hub GUI Application
-![March VR Hub](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Hub.png)
+![March VR Hub](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Hub2.png)
 
 ## Project Architecture
-### Beta Build
-As in the Alpha build iteration, the main elements of the Beta build for MarchVR are two "trackers", a PyQT GUI, and the OpenVR driver. The "trackers" each consist of an Adafruit ESP32 Feather V2 and an LSM6DS3TR IMU, allowing us to track and communicate player movement to a PC. These trackers utilize BLE in order to communicate with each other and a user's PC, which runs the OpenVR driver and PyQT GUI. One tracker serves as a BLE client while the other serves as a BLE server, splitting up tasks between them and allowing for data to be sent to the driver without any desynchronization. The server tracker communicates both the movement data for itself as well as the client tracker to the OpenVR driver, which then uses APIs to result in in-game movement. The server tracker also communicates with the PyQT GUI in order to receive a recalibration command if needed and monitor the status of the trackers.
+### Release Candidate
+The main elements of the Release Candidate for MarchVR are two "trackers", a PyQT GUI known colloqially as the MarchVR Hub, the OpenVR driver, and the new addition of a socket server application. The "trackers" each consist of an Adafruit ESP32 Feather V2, LSM6DS3TR IMU, LIS3MDL magnetometer, 3D printed casing, and a battery, allowing us to track and communicate player movement and orientation to a PC. These trackers utilize BLE in order to communicate with each other and a user's PC, which runs the the socket server application. One tracker serves as a BLE client while the other serves as a BLE server, splitting up tasks between them and allowing for data to be sent to the driver without any desynchronization. The socket server application utilizes the SimpleBLE library to communicate with the trackers and then distributes movement information to the driver and PyQT GUI application through a local socket. The OpenVR driver then uses this movement data to translate the user's physical movement to virtual movement by simulating joystick movement. When the Recalibrate button on the MarchVR Hub is clicked, a calibration command is sent to the socket server through the socket, then to the server tracker through BLE, and then shared with the client tracker in order to recalibrate both trackers before and during gameplay.
 
 ![Project Architecture](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Schematic2.png)
 
 ## Work Completed in this Milestone
-- Functionality for the GUI has been completely implemented
-- Sleep mode functionality for the trackers
-- Transmission data format has been finalized and implemented
-- Power and connection indicator light has been implemented
-- 3D printed casing has been manufactured and implemented over the course of three design iterations
-- Discovered a solution to implement the project on all VR games (a longstanding issue that was experienced was that MarchVR would only work with VRChat)
-- BLE notification system has been implemented for the OpenVR driver, significantly reducing latency by removing polling
-- Error checking for the MarchVR Hub has been implemented
-- Alpha test plan has discovered that the battery life for each tracker is about 10 hours
-- Alpha test plan has determined that running two BLE clients on one device is unfeasible
-- Alpha test plan has determined that a magnetometer is required for determining the user’s orientation due to gyroscope reading instability
-- Alpha test plan has discovered that the latency has been reduced compared to using Bluetooth Classic, which was the goal of the swap to Bluetooth Low Energy in the Alpha build
-
+### Socket Server Application
+In order to remedy the issue experienced in the Beta build where the OpenVR driver and MarchVR Hub had to be run on separate devices due to attemping to share the same Bluetooth hardware, a socket server application was developed. This application was written in C++ and used the SimpleBLE library to connect to the server tracker. An auto-reconnect function was implemented in case the connection to the tracker was lost, as well. This socket server was then developed to distribute movement information to the OpenVR driver and MarchVR Hub, as well as relay the calibration command sent from the Hub to the trackers, circumventing the need for the Hub to connect to the tracker directly.
+### Implementation of the Magnetometers
+In order to accurately derive the orientation of the user, a magnetometer was added to each tracker. By measuring the Earth’s magnetic field through the magnetometer, the cardinal direction of the user’s feet can be determined. This will allow the user's walking direction to be independent of the headset direction when moving in virtual reality.
+### Walking Direction Orientation
+One limitation that was noticed early on in development is that the  user would be forced to walk in the direction they are facing. To resolve this, the direction that the user’s feet are facing is compared with the direction that the headset is facing in order to determine the walking direction in virtual reality. This required the integration of a magnetometer on the trackers as discussed above. This also required modifications to the OpenVR driver to handle these calculations upon receiving the orientation and step data from the trackers. Upon properly calculating the direction from the data, the driver sends the movement control to SteamVR, resulting in a step in the virtual reality space in the direction of the user's feet.
+### Tracker Improvements
+An auto-reconnect function was developed for the server and client trackers, requiring zero user input for ease of use. After moving them sufficiently far apart, a red light can be noticed on the LEDs of both trackers. Once brought together, the indicator LED turns yellow/blue/green and shows that they are connected to each other. If at this point they still do not connect, the newly implemented 3D printed reset button on each tracker can be used. The yellow/blue/green status LEDs indicate low/medium/high battery level and are a newly implemented feature in this milestone. The frequency calculation used for step detection was modified during this milestone in order to give the user a smoother and more responsive experience during this milestone as well, specifically making improvements to movement at low speed.
+### New Iteration of 3D Casing
+In order to make room for the addition of the magnetometer and stabilize all equipment within the 3D printed case, the casing was further improved and expanded. To achieve this, a "skeleton" for the electronic components was developed with shelves to contain different components. This skeleton is enclosed within the box-like structure of the case and a Velcro strap is looped underneath it to allow the tracker to be strapped to a user's leg.
 
 ## Known Bugs
-- The PyQT GUI and OpenVR driver cannot be run concurrently on the same device due to sharing the same Bluetooth hardware. Fixes include using the UI to calibrate the trackers prior to launching a game or using one device for the GUI and one device for running VR games on, neither of which are ideal. Thus, it has been determined that the best course of action would be the creation of a socket server to integrate both BLE clients into one and handle all incoming/outgoing BLE traffic to the user's PC for MarchVR.
-- The yaw data received from the IMU has been determined to be unstable due to the lack of a magnetometer. This is a necessary component due to needing the user's orientation for the expansion of walking capabilities, so an additional magnetometer module will be acquired as soon as possible.
-- The Bleak Python library that is used for BLE communication occasionally causes errors, especially when attempting to calibrate while the tracker is currently transmitting that a step has occurred. A "GATT Services Unreachable" error occasionally occurs when attempting to connect on certain Windows 10 machines. After resolving the bug listed below, this issue may be resolved but further testing is required.
-- ~~The ESP32's effective range for BLE communication is only about one meter. Beyond this distance, communication may be unstable. This is suitable for communication between the server and client trackers, but not ideal for communication with the user's PC.~~ This issue was resolved by swapping the tracker used for the BLE server, identifying the most likely culprit as faulty hardware. 
+- User must start up socket server manually when using SteamVR (issues have arisen when attemping to launch automatically from driver)
+- Closing the socket server during gameplay can cause the driver to crash
+- The final iteration of the casing is currently not implemented due to numerous 3D printing errors
 
-## Beta Build Demo:
-[Demo Video](https://youtu.be/ynCtCZZmBgc)
+## Release Candidate:
+[Demo Video](https://youtu.be/IjgnNKbYWoc)
+
+[Timelog](https://docs.google.com/spreadsheets/d/1unugdZlc-4rDBkXROHAn1-_Av18swAkoabrYpZTAJ7A/edit?usp=sharing)

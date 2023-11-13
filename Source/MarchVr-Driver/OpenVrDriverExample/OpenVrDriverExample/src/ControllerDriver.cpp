@@ -4,6 +4,7 @@
 #include <thread>
 #include <sstream>
 #include <string>
+//#include <winsock2.h>
 
 #include "utils.hpp"
 #include "simpleble/SimpleBLE.h"
@@ -16,17 +17,78 @@ using namespace std::chrono_literals;
 #define charUUID_TRK "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define charUUID_GUI "aad41096-f795-4b3b-83bb-858051e5e284"
 #define charUUID_DRV "22d7a034-791d-49f6-a84e-ef78ab2473ad"
-#define MAX_TIME 100
+#define MAX_TIME 250
 
+void startup_socket_server(const char* command) {
+	int returnCode = std::system(command);
+	if (returnCode == 0) {
+		std::cout << "Socket Server started successfully." << std::endl;
+	} 
+	else {
+		std::cout << "Error starting Socket Server application." << std::endl;
+	}
+}
 SimpleBLE::Peripheral search_for_esp32_and_connect(std::vector<SimpleBLE::Peripheral>& peripherals);
 void process_esp32_data(SimpleBLE::ByteArray& bytes);
 template < class T >
 vr::HmdQuaternion_t HmdQuaternion_FromMatrix(const T& matrix);
 
 SimpleBLE::Peripheral TK1_peripheral;
+SOCKET client_socket;
+struct timeval timeout;
+fd_set rfd;
+float speed = 0.0;
+float direction = 0.0;
+float yaw = 0.0;
+float yaw_offset = 0.0;
+int reset_time = MAX_TIME;
+
+bool ConnectToHost() {
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+		VRDriverLog()->Log("WSAStartup failed.");
+		return false;
+	}
+
+	SOCKADDR_IN server_address;
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(8081); // Use the port you want
+	server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+	client_socket = socket(AF_INET, SOCK_STREAM, 0);
+	if (client_socket == INVALID_SOCKET) {
+		VRDriverLog()->Log("Invalid client_socket");
+		WSACleanup();
+		return false;
+	}
+
+	if (connect(client_socket, (SOCKADDR*)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
+		VRDriverLog()->Log("Connection failed.");
+		closesocket(client_socket);
+		WSACleanup();
+		return false;
+	}
+	
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 100;
+
+	VRDriverLog()->Log("Connected to server.");
+}
+bool CloseConnection() {
+	if (client_socket) {
+		closesocket(client_socket);
+		return false;
+	}
+	WSACleanup();
+	return true;
+}
 
 EVRInitError ControllerDriver::Activate(uint32_t unObjectId)
 {
+	//==============START SOCKET SERVER==================
+	const char* command = ".\Socket-Test.exe";
+	//std::thread t2(startup_socket_server, command);
+
 	driverId = unObjectId; //unique ID for your driver
 
 	PropertyContainerHandle_t props = VRProperties()->TrackedDeviceToPropertyContainer(driverId); //this gets a container object where you store all the information about your driver
@@ -56,60 +118,10 @@ EVRInitError ControllerDriver::Activate(uint32_t unObjectId)
 	//	ButtonMaskFromId(k_EButton_IndexController_JoyStick);
 	//VRProperties()->SetUint64Property(props, Prop_SupportedButtons_Uint64, availableButtons);
 
-	auto adapter_optional = Utils::getAdapter();
-
-	if (!adapter_optional.has_value()) {
-		return VRInitError_Init_NotInitialized;
+	if (ConnectToHost()) {
+		VRDriverLog()->Log("Error in ConnectToHost() function");
+		return VRInitError_Init_Internal;
 	}
-
-	auto adapter = adapter_optional.value();
-
-	std::vector<SimpleBLE::Peripheral> peripherals;
-
-	adapter.set_callback_on_scan_found([&](SimpleBLE::Peripheral peripheral) { peripherals.push_back(peripheral); });
-
-	adapter.set_callback_on_scan_start([]() { std::cout << "Scan started." << std::endl; });
-	adapter.set_callback_on_scan_stop([]() { std::cout << "Scan stopped." << std::endl; });
-	// Scan for 5 seconds and return.
-	adapter.scan_for(5000);
-
-	TK1_peripheral = search_for_esp32_and_connect(peripherals);
-
-	if (TK1_peripheral.is_connected()) {
-		VRDriverLog()->Log("Successfully connected");
-	}
-	else {
-		VRDriverLog()->Log("Connection failed");
-		return VRInitError_Init_NotInitialized;
-	}
-
-	TK1_peripheral.notify(serviceUUID, charUUID_DRV, [&](SimpleBLE::ByteArray bytes) {
-		std::istringstream iss(bytes);
-		std::vector<std::string> tokens;
-		std::string token;
-
-		// parse data from trackers
-		while (std::getline(iss, token, ';')) {
-			tokens.push_back(token);
-		}
-		float t_speed = 0;
-		if (tokens.size() >= 8 && tokens[1] == "TK1") {
-			t_speed = std::stof(tokens[8]);
-			if (t_speed > 1.0) t_speed = 1.0;
-		}
-		float yaw = std::stof(tokens[7]);
-		this->speed = t_speed;
-		this->time = MAX_TIME;
-
-		// update head pose
-		vr::TrackedDevicePose_t hmd_pose{};
-		vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1);
-		const vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
-		this->direction = hmd_orientation.y - yaw;
-
-		//auto msg = "Yaw in arduino form: " + std::to_string(yaw) + "HMD x_pos in rads: " + std::to_string(hmd_orientation.x) + " HMD y_pos in rads: " + std::to_string(hmd_orientation.y) + " HMD z_pos in rads: " + std::to_string(hmd_orientation.z);
-		//VRDriverLog()->Log(msg.c_str());
-	});
 
 	return VRInitError_None;
 }
@@ -135,22 +147,69 @@ DriverPose_t ControllerDriver::GetPose()
 
 void ControllerDriver::RunFrame()
 {
-	//if (!TK1_peripheral.is_connected() && TK1_peripheral.initialized()) {
-	//	VRDriverLog()->Log("TK1 has been disconnected and MarchVR is attmpting to reconnect.");
-	//	TK1_peripheral.connect();
-	//}
-
 	float active_speed = 0.0;
-	if (this->time <= 20) {
+	// check if there is data to receive
+	FD_ZERO(&rfd);
+	FD_SET(client_socket, &rfd);
+	int ret = select(client_socket+1, &rfd, NULL, NULL, &timeout);
+	char buffer[64];
+	if (ret > 0) {
+
+		//get data into buffer
+		memset(buffer, 0, sizeof(buffer)); //clear buffer
+		int bytes_received = recv(client_socket, buffer, sizeof(buffer)-1, 0);
+		VRDriverLog()->Log(buffer);
+
+		std::istringstream iss(buffer);
+		std::vector<std::string> tokens;
+		std::string token;
+
+		// parse data from trackers
+		while (std::getline(iss, token, ';')) {
+			tokens.push_back(token);
+		}
+		float t_speed = 0;
+		if (tokens.size() >= 8 && tokens[1] == "TK1" && tokens[3] == "MOT") {
+			t_speed = std::stof(tokens[8]);
+			if (t_speed > 1.0) t_speed = 1.0;
+			yaw = std::stof(tokens[5]);
+		}
+		else if (tokens.size() >= 3 && tokens[3] == "CAL") {
+			yaw_offset = yaw;
+			VRDriverLog()->Log("Yaw_offset: ");
+			VRDriverLog()->Log(std::to_string(yaw_offset).c_str());
+			return;
+		}
+
+		speed = t_speed;
+		reset_time = MAX_TIME;
+	}
+	
+	// update head pose
+	vr::TrackedDevicePose_t hmd_pose{};
+	vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1);
+	const vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
+	direction = hmd_orientation.y - (yaw - yaw_offset);
+	if (reset_time <= 20) {
 		active_speed = 0.0;
 	}
 	else {
-		active_speed = this->speed*(log(this->time)/log(MAX_TIME));
-		this->time--;
+		active_speed = speed * (log(reset_time) / log(MAX_TIME));
+		reset_time--;
 	}
 	if (active_speed < 0.0) active_speed = 0;
 	if (active_speed > 1.0) active_speed = 1;
-	
+
+	if (ret > 0) {
+		VRDriverLog()->Log("Active Speed: ");
+		VRDriverLog()->Log(std::to_string(active_speed).c_str());
+		VRDriverLog()->Log("Headset yaw: ");
+		VRDriverLog()->Log(std::to_string(hmd_orientation.y).c_str());
+		VRDriverLog()->Log("Controller yaw: ");
+		VRDriverLog()->Log(std::to_string(yaw).c_str());
+	}
+
+
 	//Since we used VRScalarUnits_NormalizedTwoSided as the unit, the range is -1 to 1.
 
 	//VRDriverInput()->UpdateScalarComponent(joystickYHandle, active_speed, 0); //move forward
@@ -158,10 +217,10 @@ void ControllerDriver::RunFrame()
 	//VRDriverInput()->UpdateScalarComponent(joystickXHandle, 0.0f, 0); //change the value to move sideways
 	//VRDriverInput()->UpdateScalarComponent(trackpadXHandle, 0.0f, 0); //change the value to move sideways
 
-	VRDriverInput()->UpdateScalarComponent(joystickYHandle, active_speed * cos(this->direction), 0); //move forward
-	VRDriverInput()->UpdateScalarComponent(trackpadYHandle, active_speed * cos(this->direction), 0); //move foward
-	VRDriverInput()->UpdateScalarComponent(joystickXHandle, active_speed * sin(this->direction), 0); //change the value to move sideways
-	VRDriverInput()->UpdateScalarComponent(trackpadXHandle, active_speed * sin(this->direction), 0); //change the value to move sideways
+	VRDriverInput()->UpdateScalarComponent(joystickYHandle, active_speed * cos(direction), 0); //move forward
+	VRDriverInput()->UpdateScalarComponent(trackpadYHandle, active_speed * cos(direction), 0); //move foward
+	VRDriverInput()->UpdateScalarComponent(joystickXHandle, active_speed * sin(direction), 0); //change the value to move sideways
+	VRDriverInput()->UpdateScalarComponent(trackpadXHandle, active_speed * sin(direction), 0); //change the value to move sideways
 }
 
 void ControllerDriver::Deactivate()

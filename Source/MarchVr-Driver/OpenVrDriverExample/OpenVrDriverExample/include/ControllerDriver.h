@@ -64,9 +64,6 @@ public:
 	**/
 	void RunFrame();
 
-	float speed;
-	int time;
-	float direction;
 private:
 
 	uint32_t driverId;

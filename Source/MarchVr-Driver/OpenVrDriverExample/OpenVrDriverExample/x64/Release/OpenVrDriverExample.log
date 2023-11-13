@@ -1,12 +1,15 @@
 ﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CppBuild.targets(517,5): warning MSB8028: The intermediate directory (x64\Release\) contains files shared from another project (OpenVrDriverExample.vcxproj).  This can lead to incorrect clean and rebuild behavior.
   ControllerDriver.cpp
-C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(108,39): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(148,29): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(89,24): warning C4129: 'S': unrecognized character escape sequence
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(154,32): warning C4244: 'argument': conversion from 'SOCKET' to 'int', possible loss of data
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(192,32): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(197,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
   DeviceFactory.cpp
   DeviceProvider.cpp
   utils.cpp
   Generating Code...
-C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(207): warning C4715: 'search_for_esp32_and_connect': not all control paths return a value
-     Creating library C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver\OpenVrDriverExample\x64\Release\driver_marchvr.lib and object C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver\OpenVrDriverExample\x64\Release\driver_marchvr.exp
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(76): warning C4715: 'ConnectToHost': not all control paths return a value
+C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\OpenVrDriverExample\src\ControllerDriver.cpp(266): warning C4715: 'search_for_esp32_and_connect': not all control paths return a value
+     Creating library C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\x64\Release\driver_marchvr.lib and object C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\x64\Release\driver_marchvr.exp
   LINK : /LTCG specified but no code generation required; remove /LTCG from the link command line to improve linker performance
-  OpenVrDriverExample.vcxproj -> C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver\OpenVrDriverExample\x64\Release\driver_marchvr.dll
+  OpenVrDriverExample.vcxproj -> C:\Users\richa\MarchVR_repo\MarchVR\Examples\MarchVr-Driver-Socket\OpenVrDriverExample\x64\Release\driver_marchvr.dll
