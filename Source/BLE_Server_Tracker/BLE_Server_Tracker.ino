@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 11/1/2023 */
+/* Modified on: 11/14/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -75,6 +75,7 @@
   Adafruit_Madgwick filter;
   Adafruit_Sensor_Calibration_EEPROM cal;
   float tk2Ori[3] = {0.0f, 0.0f, 0.0f};
+  float tk1Ori[3] = {0.0f, 0.0f, 0.0f};
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -534,6 +535,9 @@ void loop()
       //Serial.println(stepCount);
     } else {
       nextStep = true;
+      tk1Ori[0] = filter.getRollRadians() / 3.1415926f;
+      tk1Ori[1] = filter.getYawRadians() / 3.1415926f;
+      tk1Ori[2] = filter.getPitchRadians() / 3.1415926f;
     }
     
   }
@@ -595,14 +599,11 @@ void loop()
         sendCali = false;
       }
       Serial.println(speed);
-      float qx, qy, qz, qw;
-      //filter.getQuaternion(&qw, &qx, &qy, &qz);
-      qy = filter.getYawRadians() / 3.1415926f;
-      float yawAvg = (qy + tk2Ori[0])/2;
-      float rollLow = min(qz, -1 * tk2Ori[2]);
+      float yawAvg = ((filter.getYawRadians() / 3.1415926f) + tk2Ori[0])/2;
+      float rollLow = min(tk1Ori[2], -1 * tk2Ori[2]);
       //Send data with orienation to the driver
       String tmp;
-      tmp = tmp + "%;TK1;DRV;MOT;4;" + qy + ";" + qx + ";" + qz + ";" + speed + ";0";
+      tmp = tmp + "%;TK1;DRV;MOT;4;" + yawAvg + ";" + ((filter.getPitchRadians() / 3.1415926f)  + ";" + rollLow + ";" + speed + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');

@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 10/26/2023 */
+/* Modified on: 11/14/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -72,6 +72,7 @@
   //Madgwick filter;
   Adafruit_Madgwick filter;
   Adafruit_Sensor_Calibration_EEPROM cal;
+  float tk2Ori[3] = {0.0f, 0.0f, 0.0f};
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -476,10 +477,8 @@ void loop()
     if (nextStep || sendCali){
       sendCali = false;
       nextStep = false;
-      float qx, qy, qz, qw;
-      filter.getQuaternion(&qw, &qx, &qy, &qz);
       String tmp;
-      tmp = tmp + "%;TK2;TK1;MOT;4;" + qy + ";" + qx + ";" + qz + ";0";
+      tmp = tmp + "%;TK2;TK1;MOT;4;" + (filter.getYawRadians() / 3.1415926f) + ";" + tk2Ori[0] + ";" + tk2Ori[2] + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');
@@ -492,7 +491,9 @@ void loop()
       startSleepTime = millis();
     } else {
       nextStep = true;
-      //Save z data
+      tk2Ori[0] = filter.getRollRadians() / 3.1415926f;
+      tk2Ori[1] = filter.getYawRadians() / 3.1415926f;
+      tk2Ori[2] = filter.getPitchRadians() / 3.1415926f;
     }
     //
   }
