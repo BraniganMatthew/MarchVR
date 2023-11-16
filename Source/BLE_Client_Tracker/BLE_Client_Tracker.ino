@@ -428,7 +428,7 @@ void loop()
   if(millis() - startBatteryTime >  batteryCheckPeriod){ //only check once every batteryCheckPeriod
     measuredvbat = analogReadMilliVolts(VBATPIN) * 2.0f / 1000.0f;
     startBatteryTime = millis();
-    Serial.println("Checking");
+    //Serial.println("Checking");
   }
   if(connected){ // ensure we are connected
     if (measuredvbat > 3.79f){
@@ -468,7 +468,7 @@ void loop()
     below = true;
   }
 
-  Serial.println(up);
+  //Serial.println(up);
 
   //Increaments step counter if user has done a full step
   if ((above && below) || sendCali){

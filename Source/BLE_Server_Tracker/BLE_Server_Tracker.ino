@@ -359,13 +359,13 @@ void setup()
                       BLECharacteristic::PROPERTY_INDICATE
                     );
 
-  pCharacteristic_GUI = pService->createCharacteristic(
-                    charUUID_GUI,
-                    BLECharacteristic::PROPERTY_READ   |
-                    BLECharacteristic::PROPERTY_WRITE  |
-                    BLECharacteristic::PROPERTY_NOTIFY |
-                    BLECharacteristic::PROPERTY_INDICATE
-                  );
+  // pCharacteristic_GUI = pService->createCharacteristic(
+  //                   charUUID_GUI,
+  //                   BLECharacteristic::PROPERTY_READ   |
+  //                   BLECharacteristic::PROPERTY_WRITE  |
+  //                   BLECharacteristic::PROPERTY_NOTIFY |
+  //                   BLECharacteristic::PROPERTY_INDICATE
+  //                 );
   
   pCharacteristic_DRV = pService->createCharacteristic(
                     charUUID_DRV,
@@ -379,8 +379,8 @@ void setup()
   pCharacteristic_TRK->addDescriptor(new BLE2902());
   pCharacteristic_TRK->setCallbacks(new MyCallbacks());
 
-  pCharacteristic_GUI->addDescriptor(new BLE2902());
-  pCharacteristic_GUI->setCallbacks(new MyCallbacks());
+  // pCharacteristic_GUI->addDescriptor(new BLE2902());
+  // pCharacteristic_GUI->setCallbacks(new MyCallbacks());
 
   pCharacteristic_DRV->addDescriptor(new BLE2902());
   pCharacteristic_DRV->setCallbacks(new MyCallbacks());
@@ -600,10 +600,11 @@ void loop()
       }
       Serial.println(speed);
       float yawAvg = ((filter.getYawRadians() / 3.1415926f) + tk2Ori[0])/2;
-      float rollLow = min(tk1Ori[2], -1 * tk2Ori[2]);
+      float pitchLow = min(tk1Ori[2], tk2Ori[2]);
+      float rollLow = min(tk1Ori[0], tk2Ori[0]);
       //Send data with orienation to the driver
       String tmp;
-      tmp = tmp + "%;TK1;DRV;MOT;4;" + yawAvg + ";" + ((filter.getPitchRadians() / 3.1415926f)  + ";" + rollLow + ";" + speed + ";0";
+      tmp = tmp + "%;TK1;DRV;MOT;4;" + (filter.getYawRadians() / 3.1415926f) + ";" + pitchLow  + ";" + rollLow + ";" + speed + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');
