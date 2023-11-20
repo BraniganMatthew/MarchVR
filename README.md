@@ -67,7 +67,11 @@ In order to make room for the addition of the magnetometer and stabilize all equ
 
 ## Contributors
 Matthew Branigan
+
 Jibin Alex
+
 Patrick Harris
+
 Richard Cusolito
+
 Maria Carmona
