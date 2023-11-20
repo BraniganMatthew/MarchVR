@@ -60,9 +60,10 @@ In order to make room for the addition of the magnetometer and stabilize all equ
 ## Known Bugs
 - SteamVR watchdog prevents automatic opening of socket application from OpenVR driver. Thus the user must start up the socket server application manually.
 
-## Release Candidate:
+## Demo Video
 [Demo Video](https://youtu.be/IjgnNKbYWoc)
 
+## Timelog
 [Timelog](https://docs.google.com/spreadsheets/d/1unugdZlc-4rDBkXROHAn1-_Av18swAkoabrYpZTAJ7A/edit?usp=sharing)
 
 ## Contributors
