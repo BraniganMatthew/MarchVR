@@ -38,7 +38,7 @@ Once connected, battery status is displayed:
 - Green: High battery level
 
 ### MarchVR Trackers
-![March VR Trackers](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Trackers2.png)
+![March VR Trackers](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Hardware.png)
 
 ### MarchVR Hub GUI Application
 ![March VR Hub](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Hub2.png)
@@ -64,3 +64,10 @@ In order to make room for the addition of the magnetometer and stabilize all equ
 [Demo Video](https://youtu.be/IjgnNKbYWoc)
 
 [Timelog](https://docs.google.com/spreadsheets/d/1unugdZlc-4rDBkXROHAn1-_Av18swAkoabrYpZTAJ7A/edit?usp=sharing)
+
+## Contributors
+Matthew Branigan
+Jibin Alex
+Patrick Harris
+Richard Cusolito
+Maria Carmona
