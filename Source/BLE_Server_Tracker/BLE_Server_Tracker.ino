@@ -59,7 +59,7 @@
 
   //Gliding Variables
   bool isGlideForward = false, isGlideBackward = false;
-  #define MAX_GLIDE_WAIT 10
+  #define MAX_GLIDE_WAIT 5
 
 
   //Calibration Variables
@@ -537,7 +537,7 @@ void loop()
     isGlideBackward = false;
   }
 
-  bool skipStep = (isGlideForward || isGlideBackward) && (glideCount % 100 == 0);
+  bool skipStep = (isGlideForward || isGlideBackward) && ((glideCount % 100 == 0) || glideCount == MAX_GLIDE_WAIT);
 
   //Increaments step counter if user has done a full step
   if ((above && below) || sendCali || skipStep){
