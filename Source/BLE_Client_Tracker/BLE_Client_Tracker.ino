@@ -475,10 +475,13 @@ void loop()
     below = false;
     above = false;
     if (nextStep || sendCali){
+      tk2Ori[0] = filter.getRollRadians() / 3.1415926f;
+      tk2Ori[1] = filter.getYawRadians() / 3.1415926f;
+      tk2Ori[2] = filter.getPitchRadians() / 3.1415926f;
       sendCali = false;
       nextStep = false;
       String tmp;
-      tmp = tmp + "%;TK2;TK1;MOT;4;" + (filter.getYawRadians() / 3.1415926f) + ";" + tk2Ori[0] + ";" + tk2Ori[2] + ";0";
+      tmp = tmp + "%;TK2;TK1;MOT;4;" + tk2Ori[1] + ";" + tk2Ori[0] + ";" + tk2Ori[2] + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');
@@ -491,9 +494,6 @@ void loop()
       startSleepTime = millis();
     } else {
       nextStep = true;
-      tk2Ori[0] = filter.getRollRadians() / 3.1415926f;
-      tk2Ori[1] = filter.getYawRadians() / 3.1415926f;
-      tk2Ori[2] = filter.getPitchRadians() / 3.1415926f;
     }
     //
   }
