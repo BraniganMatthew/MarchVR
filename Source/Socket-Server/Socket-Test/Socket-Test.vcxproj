@@ -135,7 +135,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\..\Downloads\Source.cpp" />
     <ClCompile Include="Socket-Test.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>

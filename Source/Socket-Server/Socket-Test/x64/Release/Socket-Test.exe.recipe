@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\richa\MarchVR_repo\MarchVR\Examples\Socket-Test\x64\Release\Socket-Test.exe</FullPath>
+      <FullPath>C:\Users\richa\MarchVR_repo\MarchVR\Examples\Socket-Server\x64\Release\Socket-Test.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

@@ -41,8 +41,11 @@ SOCKET serverSocketDriver;
 SOCKET clientSocketHub;
 SOCKET clientSocketDriver;
 
-fd_set rfd;
+fd_set hub_rfd;
+fd_set drv_rfd;
 struct timeval timeout;
+
+int reset_count = 0;
 
 SimpleBLE::Peripheral search_for_esp32_and_connect_by_service(std::vector<SimpleBLE::Peripheral>& peripherals) {
     for (auto& peripheral : peripherals) {
@@ -54,6 +57,7 @@ SimpleBLE::Peripheral search_for_esp32_and_connect_by_service(std::vector<Simple
             }
         }
     }
+    return peripheral;
 }
 
 void process_esp32_data(SimpleBLE::ByteArray& bytes) {
@@ -89,7 +93,8 @@ void process_esp32_data(SimpleBLE::ByteArray& bytes) {
 
 void startup_marchvr_hub(const char* command) {
     int returnCode = std::system(command);
-
+    //ShellExecute(NULL, L"open", L"MarchVR_Hub.exe", NULL, NULL, SW_RESTORE);
+    //int returnCode = 0;
     if (returnCode == 0) {
         std::cout << "MarchVR_Hub started successfully." << std::endl;
     }
@@ -114,7 +119,7 @@ bool connect_to_esp_via_ble() {
     adapter.set_callback_on_scan_start([]() { std::cout << "Scan started." << std::endl; });
     adapter.set_callback_on_scan_stop([]() { std::cout << "Scan stopped." << std::endl; });
     // Scan for 5 seconds and return.
-    adapter.scan_for(5000);
+    adapter.scan_for(1000);
 
     // Print found devices
     std::cout << "The following devices were found:" << std::endl;
@@ -124,6 +129,11 @@ bool connect_to_esp_via_ble() {
     }
 
     peripheral = search_for_esp32_and_connect_by_service(peripherals);
+    if (!peripheral.initialized()) {
+        std::cout << "Could not find device." << std::endl;
+        return 1;
+    }
+    
 
     if (peripheral.is_connected()) {
         std::cout << "Successfully connected." << std::endl;
@@ -256,7 +266,8 @@ int main()
 
 
 //================START PYTHON SCRIPT===========================
-    const char* command = "python MarchVR_Hub.py";
+    const char* command = "drivers/marchvr/bin/win64/MarchVR_Hub.exe";
+   // const char* command = "MarchVR_Hub.exe";
 
     std::thread t1(startup_marchvr_hub, command);
 
@@ -275,18 +286,19 @@ int main()
     timeout.tv_usec = 1000;
 
     while (1) {
-        FD_ZERO(&rfd);
-        FD_SET(clientSocketHub, &rfd); //maybe serverSocketHub
-        int ret = select(clientSocketHub+1, &rfd, NULL, NULL, &timeout);
-        char buffer[64];
-        if (ret > 0) {
+        FD_ZERO(&hub_rfd);
+        FD_SET(clientSocketHub, &hub_rfd);
+        int hub_ret = select(clientSocketHub+1, &hub_rfd, NULL, NULL, &timeout);
+        char hub_buffer[64];
+        if (hub_ret > 0) {
             std::cout << "We got data from hub!" << std::endl;
-            memset(buffer, 0, sizeof(buffer)); //clear buffer
-            int bytes_received = recv(clientSocketHub, buffer, sizeof(buffer) - 1, 0);
-            std::string temp(buffer, sizeof(buffer));
+            memset(hub_buffer, 0, sizeof(hub_buffer)); //clear buffer
+            int bytes_received = recv(clientSocketHub, hub_buffer, sizeof(hub_buffer) - 1, 0);
+            std::string temp(hub_buffer, sizeof(hub_buffer));
             std::cout << temp << std::endl;
             process_esp32_data(temp);
         }
+        
         if (!peripheral.is_connected()) {
             //reconnect with peripheral
             std::cout << "Peripheral device was disconnected! Attempting to reconnect." << std::endl;
