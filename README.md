@@ -38,16 +38,16 @@ Once connected, battery status is displayed:
 - Green: High battery level
 
 ### MarchVR Trackers
-![March VR Trackers](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Hardware.png)
+![March VR Trackers](https://github.com/BraniganMatthew/MarchVR/blob/main/Outdated/Images/MarchVR_Hardware.png)
 
 ### MarchVR Hub GUI Application
-![March VR Hub](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Hub2.png)
+![March VR Hub](https://github.com/BraniganMatthew/MarchVR/blob/main/Outdated/Images/MarchVR_Hub2.png)
 
 ## Project Architecture
 ### Final Report
 The main elements of MarchVR are two "trackers", a PyQT GUI known colloqially as the MarchVR Hub, the OpenVR driver, and a socket server application. The "trackers" each consist of an Adafruit ESP32 Feather V2, LSM6DS3TR IMU, LIS3MDL magnetometer, 3D printed casing, and a battery, allowing us to track and communicate player movement and orientation to a PC. These trackers utilize Bluetooth Low Energy (BLE) in order to communicate with each other and a user's PC, which runs the the socket server application. One tracker serves as a BLE client while the other serves as a BLE server, splitting up tasks between them and allowing for data to be sent to the driver without any desynchronization. The socket server application utilizes the SimpleBLE library to communicate with the trackers and then distributes movement information to the driver and PyQT GUI application through a local socket. The OpenVR driver then uses this movement data to translate the user's physical movement to virtual movement by simulating joystick movement. When the Recalibrate button on the MarchVR Hub is clicked, a calibration command is sent to the socket server through the socket, then to the server tracker through BLE, and then shared with the client tracker in order to recalibrate both trackers before and during gameplay.
 
-![Project Architecture](https://github.com/BraniganMatthew/MarchVR/blob/main/Images/MarchVR_Schematic2.png)
+![Project Architecture](https://github.com/BraniganMatthew/MarchVR/blob/main/Outdated/Images/MarchVR_Schematic2.png)
 
 ## Work Completed in this Milestone
 ### Walking Direction Orientation
