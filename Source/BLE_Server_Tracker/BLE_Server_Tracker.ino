@@ -2,7 +2,7 @@
 
 /* This program is used for converting stepping data to speed data*/
 /* Created by: Matthew Branigan */
-/* Modified on: 11/1/2023 */
+/* Modified on: 11/14/2023 */
 
 //#include "BluetoothSerial.h"
 
@@ -57,10 +57,16 @@
   float variance = 0.1f;
   bool trackerStep1 = false, trackerStep2 = false;
 
+  //Gliding Variables
+  bool isGlideForward = false, isGlideBackward = false;
+  #define MAX_GLIDE_WAIT 5
+
+
   //Calibration Variables
   float accelAvg[3];
   short accelPos[3];
   unsigned int up = 0;
+  bool sendCali = false;
 
   //Filtering and Frequency Variables
   float prevVal = 0.0f;
@@ -73,6 +79,8 @@
   //Madgwick filter;
   Adafruit_Madgwick filter;
   Adafruit_Sensor_Calibration_EEPROM cal;
+  float tk2Ori[3] = {0.0f, 0.0f, 0.0f};
+  float tk1Ori[3] = {0.0f, 0.0f, 0.0f};
 
   //Create a NeoPixel object called onePixel that addresses 1 pixel in pin PIN_NEOPIXEL
   Adafruit_NeoPixel onePixel = Adafruit_NeoPixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -243,6 +251,10 @@ void bleResponse()
   //If to server
   if (dst == "TK1"){
     if (src == "TK2"){
+      tk2Ori[0] = splitVal.at(5).toFloat();
+      tk2Ori[1] = splitVal.at(6).toFloat();
+      tk2Ori[2] = splitVal.at(7).toFloat();
+
       trackerStep2 = true;
       tk2Time = millis();
     } else if (src == "GUI") {
@@ -263,18 +275,7 @@ void bleResponse()
         calibrateTracker();
 
         //Send orientation data back to driver
-        tmp.clear();
-        int speed = 0;
-        tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
-        Vector<String> splitTmp;
-        splitTmp.setStorage(BLE_RSP_ARRAY);
-        splitString(tmp, &splitTmp, ';');
-        tmp.remove(tmp.length()-1);
-        tmp = tmp + checkSumCalc(&splitTmp);
-        const char* tmp_c_2 = tmp.c_str();
-        pCharacteristic_DRV->setValue((uint8_t*)tmp_c_2, tmp.length());
-        pCharacteristic_DRV->notify();
-        Serial.println(tmp);
+        sendCali = true;
       }
 
     } else if (src == "DRV") {
@@ -363,13 +364,13 @@ void setup()
                       BLECharacteristic::PROPERTY_INDICATE
                     );
 
-  pCharacteristic_GUI = pService->createCharacteristic(
-                    charUUID_GUI,
-                    BLECharacteristic::PROPERTY_READ   |
-                    BLECharacteristic::PROPERTY_WRITE  |
-                    BLECharacteristic::PROPERTY_NOTIFY |
-                    BLECharacteristic::PROPERTY_INDICATE
-                  );
+  // pCharacteristic_GUI = pService->createCharacteristic(
+  //                   charUUID_GUI,
+  //                   BLECharacteristic::PROPERTY_READ   |
+  //                   BLECharacteristic::PROPERTY_WRITE  |
+  //                   BLECharacteristic::PROPERTY_NOTIFY |
+  //                   BLECharacteristic::PROPERTY_INDICATE
+  //                 );
   
   pCharacteristic_DRV = pService->createCharacteristic(
                     charUUID_DRV,
@@ -383,8 +384,8 @@ void setup()
   pCharacteristic_TRK->addDescriptor(new BLE2902());
   pCharacteristic_TRK->setCallbacks(new MyCallbacks());
 
-  pCharacteristic_GUI->addDescriptor(new BLE2902());
-  pCharacteristic_GUI->setCallbacks(new MyCallbacks());
+  // pCharacteristic_GUI->addDescriptor(new BLE2902());
+  // pCharacteristic_GUI->setCallbacks(new MyCallbacks());
 
   pCharacteristic_DRV->addDescriptor(new BLE2902());
   pCharacteristic_DRV->setCallbacks(new MyCallbacks());
@@ -477,8 +478,8 @@ void loop()
     cal.calibrate(accel);
     cal.calibrate(gyro);
     filter.update(gyro.gyro.x * SENSORS_RADS_TO_DPS, gyro.gyro.y * SENSORS_RADS_TO_DPS, gyro.gyro.z * SENSORS_RADS_TO_DPS, accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
-    //Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYaw(), filter.getPitch(), filter.getRoll());
-    //Serial.printf("X: %f Y: %f Z: %f\n", mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
+    //Serial.printf("Yaw: %f Pitch: %f Roll: %f\n", filter.getYawRadians() / 3.1415926f, filter.getPitchRadians() / 3.1415926f, filter.getRollRadians() / 3.1415926f);
+    //Serial.printf("X: %f Y: %f Z: %f\n", accel.acceleration.x, accel.acceleration.y, accel.acceleration.z);
   }
 
   //Check Battery and Change Battery Level
@@ -504,12 +505,6 @@ void loop()
       onePixel.show();
     }
   }
-
-  //Starts timer for frequency check (might switch condition to stepCount == 0 for better frequnecy accuracy)
-  // if (resetTime){
-  //   startTime = currTime;
-  //   resetTime = false;
-  // }
   
   //Applies IIR smoothing filter to acceleration
   float currAccel[3] = {accel.acceleration.x, accel.acceleration.y, accel.acceleration.z};
@@ -522,11 +517,33 @@ void loop()
     below = true;
   }
 
+  //Gliding Enable
+  static unsigned long glideCount = 0;
+  if (accel.acceleration.z < -20){
+    if (glideCount > MAX_GLIDE_WAIT){
+      isGlideForward = true;
+      //Serial.println("Gliding Foward");
+    }
+    glideCount++;
+  } else if (accel.acceleration.z > 6){
+    if (glideCount > MAX_GLIDE_WAIT){
+      isGlideBackward = true;
+      //Serial.println("Gliding Backwards");
+    }
+    glideCount++;
+  } else {
+    glideCount = 0;
+    isGlideForward = false;
+    isGlideBackward = false;
+  }
+
+  bool skipStep = (isGlideForward || isGlideBackward) && ((glideCount % 100 == 0) || glideCount == MAX_GLIDE_WAIT);
+
   //Increaments step counter if user has done a full step
-  if (above && below){
+  if ((above && below) || sendCali || skipStep){
     below = false;
     above = false;
-    if (nextStep){
+    if (nextStep || sendCali || skipStep){
       //stepCount++;
       // if (trackerStep2 ^ trackerStep1){
       //   startTime = currTime;
@@ -535,7 +552,10 @@ void loop()
       tk1Time = millis();
       nextStep = false;
       Serial.println("TRACKER STEP 1");
-      return;
+      tk1Ori[0] = filter.getRollRadians() / 3.1415926f;
+      tk1Ori[1] = filter.getYawRadians() / 3.1415926f;
+      tk1Ori[2] = filter.getPitchRadians() / 3.1415926f;
+      //return;
       //Serial.println(stepCount);
     } else {
       nextStep = true;
@@ -544,7 +564,7 @@ void loop()
   }
 
   //Calculates speed and sends it to OpenVR if it is high enough
-  if (trackerStep1 && trackerStep2){
+  if ((trackerStep1 && trackerStep2) || skipStep){
 
     static uint8_t nextStep = 0;
 
@@ -564,8 +584,8 @@ void loop()
     //unsigned long endTime = currTime;
     unsigned long timeDiff = max(tk1Time, tk2Time) - min(tk1Time, tk2Time);
 
-    Serial.println(tk1Time);
-    Serial.printf("Tracker 1 Time: %lu Tracker 2 Time: %lu\n", tk1Time, tk2Time);
+    //Serial.println(tk1Time);
+    //Serial.printf("Tracker 1 Time: %lu Tracker 2 Time: %lu\n", tk1Time, tk2Time);
 
     //Calculate freqeuncy of steps
     float freq = 1/((float)timeDiff / 1000.0f);
@@ -576,30 +596,35 @@ void loop()
     Serial.printf("Frequency: %f\n", freq);
     float speed = 0.232*freq - 0.0137;
 
-    if (trackerStep1 == true){
-      nextStep = 2;
-    } else if (trackerStep2 == true){
-      nextStep = 1;
-    }
-
     //Reset step counter and timer
     stepCount = 0;
     resetTime = true;
     trackerStep1 = false;
     trackerStep2 = false;
-    // tk1Time = min(tk1Time, tk2Time) ;
-    // tk2Time = tk1Time;
 
     //Calculate speed between 0.0 and 1.0
-    Serial.println(freq);
-    
+    //Serial.println(freq);
 
     //Send to OpenVR drivers
-    if (speed >= 0.1){
+    if (speed >= 0.1 || sendCali || skipStep){
+      if (sendCali == true){
+        speed = 0.0f;
+        sendCali = false;
+      }
+      if (isGlideForward == true){
+        speed = 1.0f;
+        skipStep = false;
+      } else if (isGlideBackward == true){
+        speed = -1.0f;
+        skipStep = false;
+      }
       Serial.println(speed);
+      float yawAvg = ((filter.getYawRadians() / 3.1415926f) + tk2Ori[0])/2;
+      float pitchLow = min(tk1Ori[2], tk2Ori[2]);
+      float rollLow = min(tk1Ori[0], tk2Ori[0]);
       //Send data with orienation to the driver
       String tmp;
-      tmp = tmp + "%;TK1;DRV;MOT;4;" + filter.getYawRadians() + ";" + filter.getPitchRadians() + ";" + filter.getRollRadians() + ";" + speed + ";0";
+      tmp = tmp + "%;TK1;DRV;MOT;4;" + tk1Ori[1] + ";" + pitchLow  + ";" + rollLow + ";" + speed + ";0";
       Vector<String> splitTmp;
       splitTmp.setStorage(BLE_RSP_ARRAY);
       splitString(tmp, &splitTmp, ';');
@@ -610,7 +635,6 @@ void loop()
       pCharacteristic_DRV->notify();
       Serial.println(tmp);
     } else {
-      nextStep = 0;
       //too slow, not sending
     }
   }  
