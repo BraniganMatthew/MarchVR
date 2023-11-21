@@ -1,7 +1,0 @@
-﻿  main.cpp
-  Generating code
-  73 of 338 functions (21.6%) were compiled, the rest were copied from previous compilation.
-    41 functions were new in current compilation
-    12 functions had inline decision re-evaluated but remain unchanged
-  Finished generating code
-  SimpleBLETest.vcxproj -> C:\Users\richa\MarchVR_repo\MarchVR\Examples\Simple-IMU-Bluetooth-Program\SimpleBLETest\x64\Release\SimpleBLETest.exe
